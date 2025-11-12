@@ -3,11 +3,11 @@
 
 namespace logger {
 
-void task_function(void* pvParameters) {
-	// Logger task implementation
-	while (true) {
-		// Logging operations would go here
-	}
+TLogger::TLogger(uint32_t period)
+	: task_base::TaskBase(period) {}
+
+void TLogger::task() {
+	// Implement logging functionality here
 }
 
 

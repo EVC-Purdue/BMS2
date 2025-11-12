@@ -18,11 +18,13 @@ static StackType_t g_logger_stack[logger::TASK_STACK_SIZE];
 
 
 extern "C" void app_main() {
+	logger::TLogger logger(logger::TASK_PERIOD_MS);
+
 	TaskHandle_t logger_task_handle = xTaskCreateStaticPinnedToCore(
-		logger::task_function,
+		&logger::TLogger::taskWrapper,
 		logger::TASK_NAME,
 		logger::TASK_STACK_SIZE,
-		nullptr,
+		&logger,
 		logger::TASK_PRIORITY,
 		g_logger_stack,
 		&g_logger_tcb,
