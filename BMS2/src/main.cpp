@@ -3,7 +3,8 @@
 
 #include "freertos/FreeRTOS.h"
 
-#include "logger/logger.hpp"
+#include "logger/t_logger.hpp"
+#include "logger/q_logger.hpp"
 
 
 // Task control blocks (TCBs)
@@ -11,24 +12,30 @@ static StaticTask_t g_logger_tcb = {};
 
 
 // Task stacks
-static StackType_t g_logger_stack[logger::TASK_STACK_SIZE];
-
+static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
 
 
 
 
 extern "C" void app_main() {
-	logger::TLogger logger(logger::TASK_PERIOD_MS);
+	// Queue initialization
+	q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
 
+
+	// Task definitions
+	t_logger::TLogger t_logger(t_logger::TASK_PERIOD_MS);
+
+
+	// Start tasks
 	TaskHandle_t logger_task_handle = xTaskCreateStaticPinnedToCore(
-		&logger::TLogger::taskWrapper,
-		logger::TASK_NAME,
-		logger::TASK_STACK_SIZE,
-		&logger,
-		logger::TASK_PRIORITY,
+		&t_logger::TLogger::taskWrapper,
+		t_logger::TASK_NAME,
+		t_logger::TASK_STACK_SIZE,
+		&t_logger,
+		t_logger::TASK_PRIORITY,
 		g_logger_stack,
 		&g_logger_tcb,
-		logger::TASK_CORE_ID
+		t_logger::TASK_CORE_ID
 	);
 	
 }

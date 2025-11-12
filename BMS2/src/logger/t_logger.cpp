@@ -1,7 +1,10 @@
-#include "logger/logger.hpp"
+#include "freertos/FreeRTOS.h"
 
 
-namespace logger {
+#include "logger/t_logger.hpp"
+
+
+namespace t_logger {
 
 TLogger::TLogger(uint32_t period)
 	: task_base::TaskBase(period) {}
@@ -11,4 +14,4 @@ void TLogger::task() {
 }
 
 
-} // namespace logger
+} // namespace t_logger
