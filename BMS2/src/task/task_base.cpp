@@ -9,15 +9,6 @@ TaskBase::TaskBase(uint32_t period)
 	: period_ms(period) {}
 
 
-// void TaskBase::start() {
-// 	TickType_t lastWakeTime = xTaskGetTickCount();
-
-// 	while (true) {
-// 		this->task();
-// 		vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(this->period_ms));
-// 	}
-// }
-
 void TaskBase::taskWrapper(void* self_ptr) {
 	TaskBase* task_instance = static_cast<TaskBase*>(self_ptr);
 	
