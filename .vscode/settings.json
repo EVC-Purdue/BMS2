@@ -1,3 +1,5 @@
 {
-	"idf.pythonInstallPath": "/usr/bin/python"
+	"C_Cpp.default.compileCommands": [
+		"${workspaceFolder}/BMS2/compile_commands.json"
+	]
 }
