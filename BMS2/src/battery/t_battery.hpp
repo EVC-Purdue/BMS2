@@ -60,7 +60,48 @@ struct BatteryData {
 	uint32_t sum_voltage;
 };
 
-// FAULTS
+
+// Faults stay live until cleared
+class PersistentFaults {
+	public:
+		const static size_t FAULT_COUNT = 7 + THERM_COUNT;
+
+		bool cell_undervoltage;
+		bool cell_overvoltage;
+		bool battery_undervoltage;
+		bool battery_overvoltage;
+		bool battery_voltage_imbalance;
+		bool overcurrent;
+		bool undercurrent;
+		bool temps[THERM_COUNT];
+
+		void formatFaults(uint32_t& out);
+};
+
+// Faults that clear themselves
+class LiveFaults {
+	public:
+		const static size_t FAULT_COUNT = 0;
+		void formatFaults(uint32_t& out) {}
+};
+
+// Faults that warn but do not take action
+class WarningFaults {
+	public:
+		const static size_t FAULT_COUNT = 3;
+
+		bool overpower;
+		bool any_bypassed;
+		bool temps_imbalance;
+
+		void formatFaults(uint32_t& out);
+};
+
+constexpr size_t TOTAL_FAULT_COUNT = PersistentFaults::FAULT_COUNT + LiveFaults::FAULT_COUNT + WarningFaults::FAULT_COUNT;
+
+static_assert(TOTAL_FAULT_COUNT < 32, "Total fault count exceeds 32 bits");
+
+
 // PARAMETERS
 
 
