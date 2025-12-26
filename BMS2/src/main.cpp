@@ -54,4 +54,7 @@ extern "C" void app_main() {
 		t_logger::TASK_CORE_ID
 	);
 	
+	while (true) {
+		vTaskDelay(pdMS_TO_TICKS(1000));
+	}
 }
