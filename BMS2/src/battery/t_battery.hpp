@@ -61,55 +61,55 @@ struct BatteryData {
 };
 
 
-// Faults stay live until cleared
-class PersistentFaults {
-	public:
-		const static size_t FAULT_COUNT = 7 + THERM_COUNT;
+// TODO: move faults into own header
 
-		bool cell_undervoltage;
-		bool cell_overvoltage;
-		bool battery_undervoltage;
-		bool battery_overvoltage;
-		bool battery_voltage_imbalance;
-		bool overcurrent;
-		bool undercurrent;
-		bool temps[THERM_COUNT];
-
-		void formatFaults(uint32_t& out);
+// Faults stay active until cleared
+// If the bit is set in the current or previous fault, it is considered active
+enum PersistentFault {
+	CELL_UNDERVOLTAGE = 0,
+	CELL_OVERVOLTAGE,
+	BATTERY_UNDERVOLTAGE,
+	BATTERY_OVERVOLTAGE,
+	BATTERY_VOLTAGE_IMBALANCE,
+	OVERCURRENT,
+	UNDERCURRENT,
+	TEMP_0,
+	TEMP_1,
+	TEMP_2,
+	TEMP_3,
+	PERSISTENT_FAULTS_END
 };
 
 // Faults that clear themselves
-class LiveFaults {
-	public:
-		const static size_t FAULT_COUNT = 0;
-		void formatFaults(uint32_t& out) {}
+// If the bit is set in the current fault, it is considered active
+enum LiveFault {
+	// No live faults defined yet
+	LIVE_FAULTS_END = PERSISTENT_FAULTS_END
 };
 
 // Faults that warn but do not take action
-class WarningFaults {
-	public:
-		const static size_t FAULT_COUNT = 3;
-
-		bool overpower;
-		bool any_bypassed;
-		bool temps_imbalance;
-
-		void formatFaults(uint32_t& out);
+enum WarningFault {
+	OVERPOWER = LIVE_FAULTS_END,
+	ANY_BYPASSED,
+	TEMPS_IMBALANCE,
+	WARNING_FAULTS_END
 };
 
-constexpr size_t TOTAL_FAULT_COUNT = PersistentFaults::FAULT_COUNT + LiveFaults::FAULT_COUNT + WarningFaults::FAULT_COUNT;
-
-static_assert(TOTAL_FAULT_COUNT < 32, "Total fault count exceeds 32 bits");
+static_assert(WarningFault::WARNING_FAULTS_END <= 32, "Total fault count exceeds 32 bits");
 
 
 // PARAMETERS
-
 
 
 class TBattery : public task_base::TaskBase {
 	private:
 		State state;
 		BatteryData battery_data;
+		
+		uint32_t current_set_faults;
+		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp
+
+		void check_and_set_faults();
 
 	public:
 		TBattery(uint32_t period);
