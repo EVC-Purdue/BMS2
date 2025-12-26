@@ -18,7 +18,7 @@ constexpr const char* TASK_NAME = "BatteryTask";
 
 constexpr size_t IC_COUNT = 2;
 constexpr size_t CELL_COUNT_PER_IC = 12;
-constexpr size_t THERM_COUNT_PER_IC = 4;
+constexpr size_t THERM_COUNT = 4;
 
 constexpr float RAW_TO_VOLTAGE_FACTOR = 0.0001f;
 
@@ -42,7 +42,7 @@ struct IcData {
 };
 
 struct TempData {
-	float therms[THERM_COUNT_PER_IC];
+	float therms[THERM_COUNT];
 	float fet;
 	float balBot;
 	float balTop;
