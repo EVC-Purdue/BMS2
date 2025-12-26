@@ -10,11 +10,11 @@
 
 namespace t_battery {
 
-constexpr uint32_t TASK_PERIOD_MS = 1000;
+constexpr uint32_t TASK_PERIOD_MS = 50;
 constexpr uint32_t TASK_STACK_SIZE = 4096;
-constexpr UBaseType_t TASK_PRIORITY = 5;
-constexpr BaseType_t TASK_CORE_ID = 0;
-constexpr const char* TASK_NAME = "LoggingTask";
+constexpr UBaseType_t TASK_PRIORITY = 10;
+constexpr BaseType_t TASK_CORE_ID = 1;
+constexpr const char* TASK_NAME = "BatteryTask";
 
 constexpr size_t IC_COUNT = 2;
 constexpr size_t CELL_COUNT_PER_IC = 12;
