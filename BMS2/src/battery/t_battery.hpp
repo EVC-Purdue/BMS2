@@ -72,6 +72,7 @@ class TBattery : public task_base::TaskBase {
 		uint32_t current_set_faults;
 		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp
 
+		void set_fault(bool condition, size_t fault_bit);
 		void check_and_set_faults();
 
 	public:
