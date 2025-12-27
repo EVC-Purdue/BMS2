@@ -6,7 +6,7 @@
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
 #include "battery/parameters.hpp"
-#include "battery/pins.hpp"
+#include "hardware/pins.hpp"
 #include "util/overloaded.hpp"
 #include "util/cmp.hpp"
 
