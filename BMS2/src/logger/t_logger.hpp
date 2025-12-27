@@ -12,7 +12,7 @@ namespace t_logger {
 
 constexpr uint32_t TASK_PERIOD_MS = 1000;
 constexpr uint32_t TASK_STACK_SIZE = 4096;
-constexpr UBaseType_t TASK_PRIORITY = 5;
+constexpr UBaseType_t TASK_PRIORITY = 2;
 constexpr BaseType_t TASK_CORE_ID = 0;
 constexpr const char* TASK_NAME = "LoggingTask";
 
