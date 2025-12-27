@@ -1,5 +1,6 @@
 
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 
 #include "hardware/pins.hpp"
 
@@ -26,8 +27,36 @@ void configure_gpio_output() {
     gpio_config(&io_conf);
 }
 
-void configure() {
+void configure_spi(spi_device_handle_t* spi_handle) {
+    spi_bus_config_t buscfg = {
+        .mosi_io_num = pins::ESP::SPI_MOSI,
+        .miso_io_num = pins::ESP::SPI_MISO,
+        .sclk_io_num = pins::ESP::SPI_SCK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .data4_io_num = -1,
+        .data5_io_num = -1,
+        .data6_io_num = -1,
+        .data7_io_num = -1,
+        .data_io_default_level = 0,
+        .max_transfer_sz = MAX_SPI_TRANSFER_SZ,
+        .flags = 0,
+        .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
+        .intr_flags = 0,
+    };
+    spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+
+    spi_device_interface_config_t devcfg = {};
+    devcfg.mode = SPI_MODE;
+    devcfg.clock_speed_hz = SPI_CLOCK_SPEED_HZ;
+    devcfg.spics_io_num = -1;
+    devcfg.queue_size = 1;
+    spi_bus_add_device(SPI2_HOST, &devcfg, spi_handle);
+}
+
+void configure(spi_device_handle_t* spi_handle) {
     configure_gpio_output();
+    configure_spi(spi_handle);
 }
 
 void setup_initial_gpio_states() {

@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "freertos/FreeRTOS.h"
+#include "driver/spi_master.h"
 
 #include "hardware/hardware.hpp"
 #include "battery/t_battery.hpp"
@@ -24,7 +25,9 @@ static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
 
 extern "C" void app_main() {
 	// Hardware configuration and setup
-	hardware::configure();
+	spi_device_handle_t spi_handle;
+
+	hardware::configure(&spi_handle);
 	hardware::setup_initial_gpio_states();
 
 	// Queue initialization
