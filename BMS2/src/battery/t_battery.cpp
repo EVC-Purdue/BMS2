@@ -96,6 +96,18 @@ void TBattery::task() {
             }
         }, msg);
     }
+
+    switch (this->mode) {
+        case modes::Mode::IDLE:
+            // Handle IDLE mode operations
+            break;
+        case modes::Mode::MONITORING:
+            // Handle MONITORING mode operations
+            break;
+        case modes::Mode::BALANCING:
+            // Handle BALANCING mode operations
+            break;
+    }
 	
 }
 
