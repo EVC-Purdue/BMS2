@@ -78,6 +78,14 @@ void TBattery::check_and_set_faults() {
 	this->previous_set_faults |= this->current_set_faults;
 }
 
+bool TBattery::problems_present() {
+	uint32_t persistent_faults_mask = (static_cast<uint32_t>(1) << PersistentFault::PERSISTENT_FAULTS_END) - 1;
+	uint32_t live_faults_mask = ((static_cast<uint32_t>(1) << LiveFault::LIVE_FAULTS_END) - 1) & ~persistent_faults_mask;
+	return ((this->current_set_faults & persistent_faults_mask) != 0) ||  // Check current persistent faults
+		   ((this->previous_set_faults & persistent_faults_mask) != 0) || // Check previous persistent faults
+		   ((this->current_set_faults & live_faults_mask) != 0); 		  // Check current live faults
+}
+
 void TBattery::task() {
 	// Implement logging functionality here
 	q_battery::Message msg = {};

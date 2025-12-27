@@ -72,8 +72,12 @@ class TBattery : public task_base::TaskBase {
 		uint32_t current_set_faults;
 		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp
 
+		// If condition is true, set the fault bit at fault_bit index in current_set_faults
 		void set_fault(bool condition, size_t fault_bit);
+		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults.
 		void check_and_set_faults();
+		// Return true if any presisent or live faults are currently set or persistent faults still exist.
+		bool problems_present();
 
 	public:
 		TBattery(uint32_t period);
