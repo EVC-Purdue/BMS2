@@ -1,5 +1,5 @@
-#ifndef FAULTS_HPP
-#define FAULTS_HPP
+#ifndef BATTERY_FAULTS_HPP
+#define BATTERY_FAULTS_HPP
 
 // Faults stay active until cleared
 // If the bit is set in the current or previous fault, it is considered active
@@ -35,4 +35,4 @@ enum WarningFault {
 
 static_assert(WarningFault::WARNING_FAULTS_END <= 32, "Total fault count exceeds 32 bits");
 
-#endif // FAULTS_HPP
+#endif // BATTERY_FAULTS_HPP
