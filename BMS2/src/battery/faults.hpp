@@ -1,6 +1,8 @@
 #ifndef BATTERY_FAULTS_HPP
 #define BATTERY_FAULTS_HPP
 
+// Note: all fault values (indexes) are unique across all enums
+
 // Faults stay active until cleared
 // If the bit is set in the current or previous fault, it is considered active
 enum PersistentFault
@@ -36,6 +38,8 @@ enum WarningFault
 	WARNING_FAULTS_END
 };
 
+
+// uint32_t is used to store faults, so total fault count must not exceed 32
 static_assert(WarningFault::WARNING_FAULTS_END <= 32, "Total fault count exceeds 32 bits");
 
 #endif // BATTERY_FAULTS_HPP
