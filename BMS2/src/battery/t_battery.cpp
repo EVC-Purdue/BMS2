@@ -1,6 +1,7 @@
 #include <cstdint>
 
 #include "freertos/FreeRTOS.h"
+#include "driver/gpio.h"
 
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
@@ -17,7 +18,15 @@
 namespace t_battery {
 
 TBattery::TBattery(uint32_t period)
-	: task_base::TaskBase(period) {}
+	: task_base::TaskBase(period),
+    mode(modes::Mode::IDLE),
+    battery_data({}),
+    parameters({}),
+    current_set_faults(0),
+    previous_set_faults(0),
+    any_bypassed(false)
+{
+}
 
 
 void TBattery::set_fault(bool condition, size_t fault_bit) {
