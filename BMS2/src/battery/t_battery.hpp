@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 
 #include "task/task_base.hpp"
+#include "battery/parameters.hpp"
 
 
 namespace t_battery {
@@ -61,13 +62,12 @@ struct BatteryData {
 };
 
 
-// PARAMETERS
-
-
 class TBattery : public task_base::TaskBase {
 	private:
 		State state;
 		BatteryData battery_data;
+
+		params::Parameters parameters;
 		
 		uint32_t current_set_faults;
 		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp

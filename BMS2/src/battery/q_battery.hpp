@@ -5,6 +5,8 @@
 
 #include "freertos/FreeRTOS.h"
 
+#include "battery/parameters.hpp"
+
 
 
 namespace q_battery {
@@ -28,7 +30,12 @@ namespace msg {
 	};
 } // namespace msg
 
-using Message = std::variant<msg::Write, msg::Read, msg::Flush>;
+using Message = std::variant<
+    msg::Write,
+    msg::Read,
+    msg::Flush,
+    params::msg::Message
+>;
 
 
 } // namespace q_battery
