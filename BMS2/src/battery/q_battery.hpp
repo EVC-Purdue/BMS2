@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 
 #include "battery/parameters.hpp"
+#include "battery/faults.hpp"
 
 
 
@@ -34,7 +35,8 @@ using Message = std::variant<
     msg::Write,
     msg::Read,
     msg::Flush,
-    params::msg::Message
+    params::msg::Message,
+    faults::msg::ClearFault
 >;
 
 

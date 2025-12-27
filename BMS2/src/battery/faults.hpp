@@ -1,6 +1,15 @@
 #ifndef BATTERY_FAULTS_HPP
 #define BATTERY_FAULTS_HPP
 
+
+namespace faults {
+
+namespace msg {
+    struct ClearFault {
+        size_t fault_index;
+    };
+} // namespace msg
+
 // Note: all fault values (indexes) are unique across all enums
 
 // Faults stay active until cleared
@@ -41,5 +50,7 @@ enum WarningFault
 
 // uint32_t is used to store faults, so total fault count must not exceed 32
 static_assert(WarningFault::WARNING_FAULTS_END <= 32, "Total fault count exceeds 32 bits");
+
+} // namespace faults
 
 #endif // BATTERY_FAULTS_HPP
