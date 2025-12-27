@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 
+#include "hardware/hardware.hpp"
 #include "battery/t_battery.hpp"
 #include "battery/q_battery.hpp"
 #include "logger/t_logger.hpp"
@@ -22,6 +23,10 @@ static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
 
 
 extern "C" void app_main() {
+	// Hardware configuration and setup
+	hardware::configure();
+	hardware::setup_initial_gpio_states();
+
 	// Queue initialization
 	q_battery::g_battery_queue = xQueueCreate(q_battery::QUEUE_SIZE, sizeof(q_battery::Message));
 	q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
