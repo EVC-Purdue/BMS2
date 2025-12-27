@@ -4,7 +4,7 @@
 
 namespace modes {
 
-enum Mode {
+enum class Mode {
     IDLE,
     MONITORING,
     BALANCING

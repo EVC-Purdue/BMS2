@@ -35,13 +35,13 @@ enum PersistentFault
 enum LiveFault
 {
 	// No live faults defined yet
-	LIVE_FAULTS_END = PERSISTENT_FAULTS_END
+	LIVE_FAULTS_END = PersistentFault::PERSISTENT_FAULTS_END
 };
 
 // Faults that warn but do not take action
 enum WarningFault
 {
-	OVERPOWER = LIVE_FAULTS_END, // Power (V*I) too high
+	OVERPOWER = LiveFault::LIVE_FAULTS_END, // Power (V*I) too high
 	ANY_BYPASSED,				 // Bypass (noise) mode is active and it was used
 	TEMPS_IMBALANCE,			 // Temperature sensors differ too much
 	WARNING_FAULTS_END
