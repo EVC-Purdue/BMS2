@@ -7,6 +7,7 @@
 
 #include "task/task_base.hpp"
 #include "battery/parameters.hpp"
+#include "battery/modes.hpp"
 
 
 namespace t_battery {
@@ -26,12 +27,6 @@ constexpr float RAW_TO_VOLTAGE_FACTOR = 0.0001f;
 inline float TO_VOLTAGE(uint32_t raw_v) {
 	return static_cast<float>(raw_v) * RAW_TO_VOLTAGE_FACTOR;
 }
-
-enum State {
-	IDLE,
-	MONITORING,
-	BALANCING
-};
 
 struct IcData {
 	uint32_t cell_voltages[CELL_COUNT_PER_IC];
@@ -64,7 +59,7 @@ struct BatteryData {
 
 class TBattery : public task_base::TaskBase {
 	private:
-		State state;
+		modes::Mode mode;
 		BatteryData battery_data;
 
 		params::Parameters parameters;

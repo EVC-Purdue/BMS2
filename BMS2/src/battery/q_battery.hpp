@@ -7,6 +7,7 @@
 
 #include "battery/parameters.hpp"
 #include "battery/faults.hpp"
+#include "battery/modes.hpp"
 
 
 
@@ -17,24 +18,13 @@ extern QueueHandle_t g_battery_queue;
 constexpr UBaseType_t QUEUE_SIZE = 10;
 
 namespace msg {
-	struct Write {
-		const char* message;
-	};
-
-	struct Read {
-		char* buffer;
-		size_t length;
-	};
-
-	struct Flush {
-		// No additional data needed for flush
-	};
+	struct SetMode {
+        modes::Mode mode;
+    };
 } // namespace msg
 
 using Message = std::variant<
-    msg::Write,
-    msg::Read,
-    msg::Flush,
+    msg::SetMode,
     params::msg::Message,
     faults::msg::ClearFault
 >;
