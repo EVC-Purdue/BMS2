@@ -30,41 +30,28 @@ void TBattery::clear_fault(size_t fault_bit) {
 
 void TBattery::check_and_set_faults() {
 	this->current_set_faults = 0;
-
-	// TODO: parameters system
-	float MIN_CELL_VOLTAGE = 3.0f;
-	float MAX_CELL_VOLTAGE = 4.2f;
-	float MIN_BATTERY_VOLTAGE = 3.2f;
-	float MAX_BATTERY_VOLTAGE = 4.2f;
-	float MAX_VOLTAGE_IMBALANCE = 0.1f;
-	float MAX_DISCHARGE_CURRENT = 100.0f;
-	float MAX_CHARGE_CURRENT = -50.0f;
-	float MIN_TEMP = 20.0f;
-	float MAX_TEMP = 60.0f;
-	float POWER_MAX = 1400.0f;
-	float MAX_TEMP_DIFF = 10.0f;
 	
-	this->set_fault(TO_VOLTAGE(this->battery_data.min_voltage) < MIN_CELL_VOLTAGE, PersistentFault::CELL_UNDERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.max_voltage) > MAX_CELL_VOLTAGE, PersistentFault::CELL_OVERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) < MIN_BATTERY_VOLTAGE, PersistentFault::BATTERY_UNDERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) > MAX_BATTERY_VOLTAGE, PersistentFault::BATTERY_OVERVOLTAGE);
+	this->set_fault(TO_VOLTAGE(this->battery_data.min_voltage) < this->parameters.v_min, PersistentFault::CELL_UNDERVOLTAGE);
+	this->set_fault(TO_VOLTAGE(this->battery_data.max_voltage) > this->parameters.v_max, PersistentFault::CELL_OVERVOLTAGE);
+	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) < this->parameters.v_min_avg, PersistentFault::BATTERY_UNDERVOLTAGE);
+	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) > this->parameters.v_max_avg, PersistentFault::BATTERY_OVERVOLTAGE);
 	this->set_fault(
 		!util::check_difference(
 			TO_VOLTAGE(this->battery_data.max_voltage),
 			TO_VOLTAGE(this->battery_data.min_voltage),
-			MAX_VOLTAGE_IMBALANCE
+			this->parameters.v_diff
 		),
 		PersistentFault::BATTERY_VOLTAGE_IMBALANCE
 	);
-	this->set_fault(this->battery_data.current > MAX_DISCHARGE_CURRENT, PersistentFault::OVERCURRENT);
-	this->set_fault(this->battery_data.current < MAX_CHARGE_CURRENT, PersistentFault::UNDERCURRENT);
-	this->set_fault(!util::check_within(this->battery_data.temps.therms[0], MIN_TEMP, MAX_TEMP), PersistentFault::TEMP_0);
-	this->set_fault(!util::check_within(this->battery_data.temps.therms[1], MIN_TEMP, MAX_TEMP), PersistentFault::TEMP_1);
-	this->set_fault(!util::check_within(this->battery_data.temps.therms[2], MIN_TEMP, MAX_TEMP), PersistentFault::TEMP_2);
-	this->set_fault(!util::check_within(this->battery_data.temps.therms[3], MIN_TEMP, MAX_TEMP), PersistentFault::TEMP_3);
+	this->set_fault(this->battery_data.current > this->parameters.i_max, PersistentFault::OVERCURRENT);
+	this->set_fault(this->battery_data.current < this->parameters.i_min, PersistentFault::UNDERCURRENT);
+	this->set_fault(!util::check_within(this->battery_data.temps.therms[0], this->parameters.t_min, this->parameters.t_max), PersistentFault::TEMP_0);
+	this->set_fault(!util::check_within(this->battery_data.temps.therms[1], this->parameters.t_min, this->parameters.t_max), PersistentFault::TEMP_1);
+	this->set_fault(!util::check_within(this->battery_data.temps.therms[2], this->parameters.t_min, this->parameters.t_max), PersistentFault::TEMP_2);
+	this->set_fault(!util::check_within(this->battery_data.temps.therms[3], this->parameters.t_min, this->parameters.t_max), PersistentFault::TEMP_3);
 
 	this->set_fault(
-		(TO_VOLTAGE(this->battery_data.avg_voltage) * this->battery_data.current) > POWER_MAX,
+		(TO_VOLTAGE(this->battery_data.avg_voltage) * this->battery_data.current) > this->parameters.p_max,
 		WarningFault::OVERPOWER
 	);
 	this->set_fault(this->any_bypassed, WarningFault::ANY_BYPASSED);
@@ -74,7 +61,7 @@ void TBattery::check_and_set_faults() {
 				!util::check_difference(
 					this->battery_data.temps.therms[i],
 					this->battery_data.temps.therms[j],
-					MAX_TEMP_DIFF
+					this->parameters.t_diff
 				),
 				WarningFault::TEMPS_IMBALANCE
 			);
