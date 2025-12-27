@@ -18,13 +18,15 @@ constexpr float PARAMETER_V_DIFF = 0.2f;       // max voltage difference
 constexpr float PARAMETER_T_MIN = 10.0f;       // min temp
 constexpr float PARAMETER_T_MAX = 50.0f;       // max temp
 constexpr float PARAMETER_T_DIFF = 30.0f;      // max temp difference
+constexpr float PARAMETER_I_MAX = 150.0f;      // max discharge current
+constexpr float PARAMETER_I_MIN = -50.0f;      // max charge current
 constexpr float PARAMETER_T_MAX_BAL = 50.0f;   // max temp for balancing
 constexpr float PARAMETER_T_RESET_BAL = 40.0f; // reset temp for balancing (once it goes below this we can balance again)
 constexpr uint32_t PARAMETER_LOG_SPEED = 1000; // How often to save to log in monitor state (ms)
 constexpr bool PARAMETER_DELETE_LOG = false;   // delete log to make space if full
 // constexpr float PARAMETER_V_CAN_CHARGE = 100.8f; // Total voltage to charge to. Sent over CAN
 // constexpr float PARAMETER_I_CAN_CHARGE = 10.0f;  // Current to charge at. Sent over CAN
-constexpr float PARAMETER_OVER_POWER = 14000.0f; // 14kW max power
+constexpr float PARAMETER_P_MAX = 14000.0f; // 14kW max power
 
 constexpr size_t KEY_CHAR_COUNT = 16; // Number of chars that could be used for the key string
 
@@ -71,13 +73,16 @@ class Parameters {
         float t_max = PARAMETER_T_MAX;
         float t_diff = PARAMETER_T_DIFF;
 
+        float i_max = PARAMETER_I_MAX;
+        float i_min = PARAMETER_I_MIN;
+
         float t_max_bal = PARAMETER_T_MAX_BAL;
         float t_reset_bal = PARAMETER_T_RESET_BAL;
 
         uint32_t log_speed = PARAMETER_LOG_SPEED;
         bool delete_log = PARAMETER_DELETE_LOG;
 
-        float over_power = PARAMETER_OVER_POWER;
+        float p_max = PARAMETER_P_MAX;
 
         // float v_can_charge = PARAMETER_V_CAN_CHARGE;
         // float i_can_charge = PARAMETER_I_CAN_CHARGE;

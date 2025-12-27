@@ -29,12 +29,16 @@ void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) 
         this->t_max = value;
     } else if (std::strncmp(key, "t_diff", KEY_CHAR_COUNT) == 0) {
         this->t_diff = value;
+    } else if (std::strncmp(key, "i_max", KEY_CHAR_COUNT) == 0) {
+        this->i_max = value;
+    } else if (std::strncmp(key, "i_min", KEY_CHAR_COUNT) == 0) {
+        this->i_min = value;
     } else if (std::strncmp(key, "t_max_bal", KEY_CHAR_COUNT) == 0) {
         this->t_max_bal = value;
     } else if (std::strncmp(key, "t_reset_bal", KEY_CHAR_COUNT) == 0) {
         this->t_reset_bal = value;
-    } else if (std::strncmp(key, "over_power", KEY_CHAR_COUNT) == 0) {
-        this->over_power = value;
+    } else if (std::strncmp(key, "p_max", KEY_CHAR_COUNT) == 0) {
+        this->p_max = value;
     }
 
 }
