@@ -72,6 +72,8 @@ class TBattery : public task_base::TaskBase {
 		uint32_t current_set_faults;
 		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp
 
+        bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
+
 		// If condition is true, set the fault bit at fault_bit index in current_set_faults
 		void set_fault(bool condition, size_t fault_bit);
 		// Remove the fault bit at fault_bit index from previous_set_faults

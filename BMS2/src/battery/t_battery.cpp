@@ -65,7 +65,7 @@ void TBattery::check_and_set_faults() {
 		(TO_VOLTAGE(this->battery_data.avg_voltage) * this->battery_data.current) > POWER_MAX,
 		WarningFault::OVERPOWER
 	);
-	// TODO: handle any_bypassed setting
+	this->set_fault(this->any_bypassed, WarningFault::ANY_BYPASSED);
 	for (size_t i = 0; i < THERM_COUNT; i++) {
 		for (size_t j = i + 1; j < THERM_COUNT; j++) {
 			this->set_fault(
