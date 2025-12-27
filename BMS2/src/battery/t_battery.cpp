@@ -22,6 +22,10 @@ void TBattery::set_fault(bool condition, size_t fault_bit) {
 	}
 }
 
+void TBattery::clear_fault(size_t fault_bit) {
+	this->previous_set_faults &= ~(static_cast<uint32_t>(1) << fault_bit);
+}
+
 void TBattery::check_and_set_faults() {
 	this->current_set_faults = 0;
 

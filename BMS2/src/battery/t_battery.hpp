@@ -74,6 +74,8 @@ class TBattery : public task_base::TaskBase {
 
 		// If condition is true, set the fault bit at fault_bit index in current_set_faults
 		void set_fault(bool condition, size_t fault_bit);
+		// Remove the fault bit at fault_bit index from previous_set_faults
+		void clear_fault(size_t fault_bit);
 		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults.
 		void check_and_set_faults();
 		// Return true if any presisent or live faults are currently set or persistent faults still exist.
