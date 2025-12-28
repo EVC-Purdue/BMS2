@@ -18,7 +18,8 @@ void configure_gpio_output() {
                         (1ULL << pins::ESP::GS1) |
                         (1ULL << pins::ESP::LED) |
                         (1ULL << pins::ESP::CAN_ON) |
-                        (1ULL << pins::ESP::CAN_S),
+                        (1ULL << pins::ESP::CAN_S) |
+                        (1ULL << pins::ESP::SPI_CS),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,

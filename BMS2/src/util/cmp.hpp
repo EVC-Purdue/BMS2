@@ -1,8 +1,6 @@
 #ifndef UTIL_CMP_HPP
 #define UTIL_CMP_HPP
 
-#include <cstdint>
-
 namespace util {
 	// Return true if value is within [min, max], else return false
 	bool check_within(float value, float min, float max);

@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <cmath>
 
 #include "util/cmp.hpp"

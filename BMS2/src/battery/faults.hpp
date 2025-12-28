@@ -71,8 +71,8 @@ class FaultManager {
         void clear_current_faults();
         // Update previous_set_faults to include all currently set faults
         void update_previous_faults();
-		// Return true if any presisent or live faults are currently set or persistent faults still exist.
-        bool has_fault_active(size_t fault_bit) const;
+		// Return true if any persistent or live faults are currently set or persistent faults still exist.
+        bool has_fault_active() const;
 };
 
 } // namespace faults

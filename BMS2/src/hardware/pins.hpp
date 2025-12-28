@@ -6,6 +6,7 @@
 
 namespace pins {
     namespace LTC {
+        // Will need to introduce a system to know which IC as well
         constexpr size_t THERM1 = 2;
         constexpr size_t THERM2 = 3;
         constexpr size_t THERM3 = 4;

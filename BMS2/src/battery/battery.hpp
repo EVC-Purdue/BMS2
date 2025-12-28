@@ -28,8 +28,8 @@ struct IcData {
 struct TempData {
 	float therms[THERM_COUNT];
 	float fet;
-	float balBot;
-	float balTop;
+	float bal_bot;
+	float bal_top;
 };
 
 struct BatteryData {

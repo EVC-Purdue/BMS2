@@ -20,13 +20,14 @@ static StaticTask_t g_logger_tcb = {};
 static StackType_t g_battery_stack[t_battery::TASK_STACK_SIZE];
 static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
 
+// Hardware peripherals
+static spi_device_handle_t spi_handle;
+
 
 
 
 extern "C" void app_main() {
-	// Hardware configuration and setup
-	spi_device_handle_t spi_handle;
-
+    // Hardware configuration and setup
 	hardware::configure(&spi_handle);
 	hardware::setup_initial_gpio_states();
 
