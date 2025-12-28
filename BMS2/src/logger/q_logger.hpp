@@ -6,7 +6,7 @@
 
 #include "freertos/FreeRTOS.h"
 
-#include "battery/t_battery.hpp"
+#include "battery/battery.hpp"
 
 
 
@@ -21,8 +21,8 @@ namespace msg {
     // types and TLogger will be responsible for converting to a string/log format
 	struct LogLine {
 		int64_t timestamp;
-        uint32_t voltages[t_battery::IC_COUNT * t_battery::CELL_COUNT_PER_IC];
-        t_battery::TempData temps;
+        uint32_t voltages[battery::IC_COUNT * battery::CELL_COUNT_PER_IC];
+        battery::TempData temps;
         float current;
         uint32_t faults;
 	};

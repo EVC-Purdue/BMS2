@@ -8,6 +8,7 @@
 #include "task/task_base.hpp"
 #include "battery/parameters.hpp"
 #include "battery/modes.hpp"
+#include "battery/battery.hpp"
 
 
 namespace t_battery {
@@ -18,49 +19,11 @@ constexpr UBaseType_t TASK_PRIORITY = 10;
 constexpr BaseType_t TASK_CORE_ID = 1;
 constexpr const char* TASK_NAME = "BatteryTask";
 
-constexpr size_t IC_COUNT = 2;
-constexpr size_t CELL_COUNT_PER_IC = 12;
-constexpr size_t THERM_COUNT = 4;
-
-constexpr float RAW_TO_VOLTAGE_FACTOR = 0.0001f;
-
-inline float TO_VOLTAGE(uint32_t raw_v) {
-	return static_cast<float>(raw_v) * RAW_TO_VOLTAGE_FACTOR;
-}
-
-struct IcData {
-	uint32_t cell_voltages[CELL_COUNT_PER_IC];
-	uint32_t min_voltage;
-	uint32_t max_voltage;
-	uint32_t avg_voltage;
-	uint32_t sum_voltage;
-	bool discharge[CELL_COUNT_PER_IC];
-};
-
-struct TempData {
-	float therms[THERM_COUNT];
-	float fet;
-	float balBot;
-	float balTop;
-};
-
-struct BatteryData {
-	IcData ics[IC_COUNT];
-	TempData temps;
-
-	float current;
-
-	uint32_t min_voltage;
-	uint32_t max_voltage;
-	uint32_t avg_voltage;
-	uint32_t sum_voltage;
-};
-
 
 class TBattery : public task_base::TaskBase {
 	private:
 		modes::Mode mode;
-		BatteryData battery_data;
+		battery::BatteryData battery_data;
 
 		params::Parameters parameters;
 		

@@ -6,6 +6,7 @@
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
 #include "battery/parameters.hpp"
+#include "battery/battery.hpp"
 #include "hardware/pins.hpp"
 #include "util/overloaded.hpp"
 #include "util/cmp.hpp"
@@ -42,14 +43,14 @@ void TBattery::clear_fault(size_t fault_bit) {
 void TBattery::check_and_set_faults() {
 	this->current_set_faults = 0;
 	
-	this->set_fault(TO_VOLTAGE(this->battery_data.min_voltage) < this->parameters.v_min, faults::PersistentFault::CELL_UNDERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.max_voltage) > this->parameters.v_max, faults::PersistentFault::CELL_OVERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) < this->parameters.v_min_avg, faults::PersistentFault::BATTERY_UNDERVOLTAGE);
-	this->set_fault(TO_VOLTAGE(this->battery_data.avg_voltage) > this->parameters.v_max_avg, faults::PersistentFault::BATTERY_OVERVOLTAGE);
+	this->set_fault(battery::TO_VOLTAGE(this->battery_data.min_voltage) < this->parameters.v_min, faults::PersistentFault::CELL_UNDERVOLTAGE);
+	this->set_fault(battery::TO_VOLTAGE(this->battery_data.max_voltage) > this->parameters.v_max, faults::PersistentFault::CELL_OVERVOLTAGE);
+	this->set_fault(battery::TO_VOLTAGE(this->battery_data.avg_voltage) < this->parameters.v_min_avg, faults::PersistentFault::BATTERY_UNDERVOLTAGE);
+	this->set_fault(battery::TO_VOLTAGE(this->battery_data.avg_voltage) > this->parameters.v_max_avg, faults::PersistentFault::BATTERY_OVERVOLTAGE);
 	this->set_fault(
 		!util::check_difference(
-			TO_VOLTAGE(this->battery_data.max_voltage),
-			TO_VOLTAGE(this->battery_data.min_voltage),
+			battery::TO_VOLTAGE(this->battery_data.max_voltage),
+			battery::TO_VOLTAGE(this->battery_data.min_voltage),
 			this->parameters.v_diff
 		),
 		faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE
@@ -62,12 +63,12 @@ void TBattery::check_and_set_faults() {
 	this->set_fault(!util::check_within(this->battery_data.temps.therms[3], this->parameters.t_min, this->parameters.t_max), faults::PersistentFault::TEMP_3);
 
 	this->set_fault(
-		(TO_VOLTAGE(this->battery_data.avg_voltage) * this->battery_data.current) > this->parameters.p_max,
+		(battery::TO_VOLTAGE(this->battery_data.avg_voltage) * this->battery_data.current) > this->parameters.p_max,
 		faults::WarningFault::OVERPOWER
 	);
 	this->set_fault(this->any_bypassed, faults::WarningFault::ANY_BYPASSED);
-	for (size_t i = 0; i < THERM_COUNT; i++) {
-		for (size_t j = i + 1; j < THERM_COUNT; j++) {
+	for (size_t i = 0; i < battery::THERM_COUNT; i++) {
+		for (size_t j = i + 1; j < battery::THERM_COUNT; j++) {
 			this->set_fault(
 				!util::check_difference(
 					this->battery_data.temps.therms[i],
