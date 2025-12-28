@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "driver/spi_master.h"
+#include "esp_log.h"
 
 #include "hardware/hardware.hpp"
 #include "battery/t_battery.hpp"
@@ -25,7 +26,6 @@ static spi_device_handle_t spi_handle;
 
 
 
-
 extern "C" void app_main() {
     // Hardware configuration and setup
 	hardware::configure(&spi_handle);
@@ -35,6 +35,12 @@ extern "C" void app_main() {
 	q_battery::g_battery_queue = xQueueCreate(q_battery::QUEUE_SIZE, sizeof(q_battery::Message));
 	q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
 
+    if ((q_battery::g_battery_queue == nullptr) ||
+        (q_logger::g_logger_queue == nullptr))
+    {
+        ESP_LOGE("APP_MAIN", "Failed to create queues");
+        abort();
+    }
 
 	// Task definitions
 	t_battery::TBattery t_battery(t_battery::TASK_PERIOD_MS);
@@ -62,6 +68,13 @@ extern "C" void app_main() {
 		&g_logger_tcb,
 		t_logger::TASK_CORE_ID
 	);
+
+    if ((battery_task_handle == nullptr) ||
+        (logger_task_handle == nullptr))
+    {
+        ESP_LOGE("APP_MAIN", "Failed to create tasks");
+        abort();
+    }
 	
 	while (true) {
 		vTaskDelay(pdMS_TO_TICKS(1000));

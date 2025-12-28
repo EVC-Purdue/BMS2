@@ -2,6 +2,7 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "driver/ledc.h"
+#include "esp_err.h"
 
 #include "hardware/pins.hpp"
 
@@ -25,7 +26,7 @@ void configure_gpio_output() {
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-    gpio_config(&io_conf);
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
 }
 
 void configure_spi(spi_device_handle_t* spi_handle) {
@@ -45,14 +46,14 @@ void configure_spi(spi_device_handle_t* spi_handle) {
         .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
         .intr_flags = 0,
     };
-    spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
     spi_device_interface_config_t devcfg = {};
     devcfg.mode = SPI_MODE;
     devcfg.clock_speed_hz = SPI_CLOCK_SPEED_HZ;
     devcfg.spics_io_num = -1;
     devcfg.queue_size = 1;
-    spi_bus_add_device(SPI2_HOST, &devcfg, spi_handle);
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, spi_handle));
 }
 
 void configure_ledc() {
@@ -64,7 +65,7 @@ void configure_ledc() {
         .clk_cfg = LEDC_AUTO_CLK,
         .deconfigure = false
     };
-    ledc_timer_config(&timer);
+    ESP_ERROR_CHECK(ledc_timer_config(&timer));
 
     ledc_channel_config_t channel = {};
     channel.gpio_num = pins::ESP::BUZZER;
@@ -74,7 +75,7 @@ void configure_ledc() {
     channel.timer_sel = LEDC_TIMER_0;
     channel.duty = 0;
     channel.hpoint = 0;
-    ledc_channel_config(&channel);
+    ESP_ERROR_CHECK(ledc_channel_config(&channel));
 }
 
 void configure(spi_device_handle_t* spi_handle) {
