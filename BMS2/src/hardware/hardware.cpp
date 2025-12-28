@@ -1,6 +1,7 @@
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
+#include "driver/ledc.h"
 
 #include "hardware/pins.hpp"
 
@@ -13,7 +14,6 @@ void configure_gpio_output() {
         .pin_bit_mask = (1ULL << pins::ESP::CONTACTOR) |
                         (1ULL << pins::ESP::SS_SWITCH) |
                         (1ULL << pins::ESP::PWR_EN) |
-                        (1ULL << pins::ESP::BUZZER) |
                         (1ULL << pins::ESP::GS0) |
                         (1ULL << pins::ESP::GS1) |
                         (1ULL << pins::ESP::LED) |
@@ -54,9 +54,32 @@ void configure_spi(spi_device_handle_t* spi_handle) {
     spi_bus_add_device(SPI2_HOST, &devcfg, spi_handle);
 }
 
+void configure_ledc() {
+    ledc_timer_config_t timer = {
+        .speed_mode = LEDC_SPEED_MODE_MAX,
+        .duty_resolution  = LEDC_TIMER_10_BIT, // 0–1023
+        .timer_num = LEDC_TIMER_0,
+        .freq_hz = 1000,               // Initial dummy frequency
+        .clk_cfg = LEDC_AUTO_CLK,
+        .deconfigure = false
+    };
+    ledc_timer_config(&timer);
+
+    ledc_channel_config_t channel = {};
+    channel.gpio_num = pins::ESP::BUZZER;
+    channel.speed_mode = LEDC_SPEED_MODE_MAX;
+    channel.channel = LEDC_CHANNEL_0;
+    channel.intr_type = LEDC_INTR_DISABLE;
+    channel.timer_sel = LEDC_TIMER_0;
+    channel.duty = 0;
+    channel.hpoint = 0;
+    ledc_channel_config(&channel);
+}
+
 void configure(spi_device_handle_t* spi_handle) {
     configure_gpio_output();
     configure_spi(spi_handle);
+    configure_ledc();
 }
 
 void setup_initial_gpio_states() {
@@ -68,6 +91,18 @@ void setup_initial_gpio_states() {
     gpio_set_level(pins::ESP::GS1, 1);
     gpio_set_level(pins::ESP::CAN_S, 0);
     gpio_set_level(pins::ESP::CAN_ON, 1);
+}
+
+void play_buzzer_tone(uint32_t frequency_hz, uint32_t duration_ms) {
+    ledc_set_freq(LEDC_SPEED_MODE_MAX, LEDC_TIMER_0, frequency_hz);
+
+    ledc_set_duty(LEDC_SPEED_MODE_MAX, LEDC_CHANNEL_0, LEDC_DUTY);
+    ledc_update_duty(LEDC_SPEED_MODE_MAX, LEDC_CHANNEL_0);
+
+    vTaskDelay(pdMS_TO_TICKS(duration_ms));
+
+    ledc_set_duty(LEDC_SPEED_MODE_MAX, LEDC_CHANNEL_0, 0);
+    ledc_update_duty(LEDC_SPEED_MODE_MAX, LEDC_CHANNEL_0);
 }
 
 } // namespace hardware

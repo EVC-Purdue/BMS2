@@ -20,7 +20,6 @@ namespace pins {
         constexpr gpio_num_t CONTACTOR = GPIO_NUM_16; // GPIO output
         constexpr gpio_num_t SS_SWITCH = GPIO_NUM_36; // GPIO output
         constexpr gpio_num_t PWR_EN = GPIO_NUM_2;     // GPIO output
-        constexpr gpio_num_t BUZZER = GPIO_NUM_17;    // GPIO output
         constexpr gpio_num_t GS0 = GPIO_NUM_21;       // GPIO output
         constexpr gpio_num_t GS1 = GPIO_NUM_9;        // GPIO output
         constexpr gpio_num_t LED = GPIO_NUM_15;       // GPIO output
@@ -32,6 +31,7 @@ namespace pins {
         constexpr gpio_num_t SPI_SCK = GPIO_NUM_38;   // SPI
         constexpr gpio_num_t SPI_MISO = GPIO_NUM_40;  // SPI
         constexpr gpio_num_t SPI_MOSI = GPIO_NUM_41;  // SPI
+        constexpr gpio_num_t BUZZER = GPIO_NUM_17;    // LEDC
     } // namespace ESP
 } // namespace pins
 
