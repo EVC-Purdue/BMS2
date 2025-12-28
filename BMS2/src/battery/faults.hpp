@@ -1,6 +1,9 @@
 #ifndef BATTERY_FAULTS_HPP
 #define BATTERY_FAULTS_HPP
 
+#include <cstdint>
+#include <cstddef>
+
 
 namespace faults {
 
@@ -50,6 +53,27 @@ enum WarningFault
 
 // uint32_t is used to store faults, so total fault count must not exceed 32
 static_assert(WarningFault::WARNING_FAULTS_END <= 32, "Total fault count exceeds 32 bits");
+
+
+class FaultManager {
+    private:
+        uint32_t current_set_faults;
+        uint32_t previous_set_faults;
+
+    public:
+        FaultManager();
+
+		// If condition is true, set the fault bit at fault_bit index in current_set_faults
+        void set_fault(bool condition, size_t fault_bit);
+		// Remove the fault bit at fault_bit index from previous_set_faults
+        void clear_fault(size_t fault_bit);
+        // Remove all current faults (start of new check cycle)
+        void clear_current_faults();
+        // Update previous_set_faults to include all currently set faults
+        void update_previous_faults();
+		// Return true if any presisent or live faults are currently set or persistent faults still exist.
+        bool has_fault_active(size_t fault_bit) const;
+};
 
 } // namespace faults
 

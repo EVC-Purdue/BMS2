@@ -7,6 +7,7 @@
 
 #include "task/task_base.hpp"
 #include "battery/parameters.hpp"
+#include "battery/faults.hpp"
 #include "battery/modes.hpp"
 #include "battery/battery.hpp"
 
@@ -27,19 +28,12 @@ class TBattery : public task_base::TaskBase {
 
 		params::Parameters parameters;
 		
-		uint32_t current_set_faults;
-		uint32_t previous_set_faults; // For persistent faults and to display past faults in WebApp
+		faults::FaultManager fault_manager;
 
         bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
 
-		// If condition is true, set the fault bit at fault_bit index in current_set_faults
-		void set_fault(bool condition, size_t fault_bit);
-		// Remove the fault bit at fault_bit index from previous_set_faults
-		void clear_fault(size_t fault_bit);
 		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults.
 		void check_and_set_faults();
-		// Return true if any presisent or live faults are currently set or persistent faults still exist.
-		bool problems_present();
 
 	public:
 		TBattery(uint32_t period);
