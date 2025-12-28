@@ -14,23 +14,25 @@ TLogger::TLogger(uint32_t period)
 	: task_base::TaskBase(period) {}
 
 void TLogger::task() {
-	// Implement logging functionality here
-	q_logger::Message msg = {};
 
-	// Read messages from the logger queue
-	if (xQueueReceive(q_logger::g_logger_queue, &msg, 0) == pdTRUE) {
-		std::visit(util::OverloadedVisit{
-			[](const q_logger::msg::Write& w) {
-				// handle write
-			},
-			[](const q_logger::msg::Read& r) {
-				// handle read
-			},
-			[](const q_logger::msg::Flush& f) {
-				// handle flush
-			}
-		}, msg);
-	}
+    // Read and process all messages from the logger queue
+	q_logger::Message msg = {};
+    while (xQueueReceive(q_logger::g_logger_queue, &msg, 0) == pdTRUE) {
+        std::visit(util::OverloadedVisit {
+            [this](const q_logger::msg::LogLine& log_line) {
+                // Handle log line
+            },
+            [this](const q_logger::msg::ReadStart& read_start) {
+                // Handle read start
+            },
+            [this](const q_logger::msg::ReadEnd& read_end) {
+                // Handle read end
+            },
+            [this](const q_logger::msg::Flush& flush) {
+                // Handle flush
+            }
+        }, msg);
+    }
 	
 }
 
