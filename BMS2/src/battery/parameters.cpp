@@ -11,48 +11,48 @@
 namespace params {
 
 void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) {
-    if (std::strncmp(key, "v_bypass", KEY_CHAR_COUNT) == 0) {
+    if (std::strncmp(key, "v_bypass", sizeof("v_bypass")) == 0) {
         this->v_bypass = value;
-    } else if (std::strncmp(key, "v_min", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "v_min", sizeof("v_min")) == 0) {
         this->v_min = value;
-    } else if (std::strncmp(key, "v_max", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "v_max", sizeof("v_max")) == 0) {
         this->v_max = value;
-    } else if (std::strncmp(key, "v_min_avg", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "v_min_avg", sizeof("v_min_avg")) == 0) {
         this->v_min_avg = value;
-    } else if (std::strncmp(key, "v_max_avg", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "v_max_avg", sizeof("v_max_avg")) == 0) {
         this->v_max_avg = value;
-    } else if (std::strncmp(key, "v_diff", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "v_diff", sizeof("v_diff")) == 0) {
         this->v_diff = value;
-    } else if (std::strncmp(key, "t_min", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "t_min", sizeof("t_min")) == 0) {
         this->t_min = value;
-    } else if (std::strncmp(key, "t_max", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "t_max", sizeof("t_max")) == 0) {
         this->t_max = value;
-    } else if (std::strncmp(key, "t_diff", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "t_diff", sizeof("t_diff")) == 0) {
         this->t_diff = value;
-    } else if (std::strncmp(key, "i_max", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "i_max", sizeof("i_max")) == 0) {
         this->i_max = value;
-    } else if (std::strncmp(key, "i_min", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "i_min", sizeof("i_min")) == 0) {
         this->i_min = value;
-    } else if (std::strncmp(key, "t_max_bal", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "t_max_bal", sizeof("t_max_bal")) == 0) {
         this->t_max_bal = value;
-    } else if (std::strncmp(key, "t_reset_bal", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "t_reset_bal", sizeof("t_reset_bal")) == 0) {
         this->t_reset_bal = value;
-    } else if (std::strncmp(key, "p_max", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "p_max", sizeof("p_max")) == 0) {
         this->p_max = value;
     }
 
 }
 
 void Parameters::set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value) {
-    if (std::strncmp(key, "log_speed", KEY_CHAR_COUNT) == 0) {
+    if (std::strncmp(key, "log_speed", sizeof("log_speed")) == 0) {
         this->log_speed = value;
     }
 }
 
 void Parameters::set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value) {
-    if (std::strncmp(key, "bypass", KEY_CHAR_COUNT) == 0) {
+    if (std::strncmp(key, "bypass", sizeof("bypass")) == 0) {
         this->bypass = value;
-    } else if (std::strncmp(key, "delete_log", KEY_CHAR_COUNT) == 0) {
+    } else if (std::strncmp(key, "delete_log", sizeof("delete_log")) == 0) {
         this->delete_log = value;
     }
 }
