@@ -10,6 +10,9 @@
 
 namespace params {
 
+    // TODO: validation of parameers (reasonable ranges, how they are set relative to each other, etc)
+
+
 void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) {
     if (std::strncmp(key, "v_bypass", sizeof("v_bypass")) == 0) {
         this->v_bypass = value;

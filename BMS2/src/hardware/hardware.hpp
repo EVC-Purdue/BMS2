@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "driver/spi_master.h"
+
 
 namespace hardware {
 

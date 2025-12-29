@@ -22,7 +22,7 @@ static StackType_t g_battery_stack[t_battery::TASK_STACK_SIZE];
 static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
 
 // Hardware peripherals
-static spi_device_handle_t spi_handle;
+static spi_device_handle_t spi_handle = nullptr;
 
 
 
@@ -76,6 +76,8 @@ extern "C" void app_main() {
         abort();
     }
 	
+
+    // Not sure if it is okay if app_main returns??
 	while (true) {
 		vTaskDelay(pdMS_TO_TICKS(1000));
 	}
