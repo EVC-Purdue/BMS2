@@ -5,8 +5,7 @@
 
 
 namespace pins {
-    namespace LTC {
-        // Will need to introduce a system to know which IC as well
+    namespace LTC1 { // TOP
         constexpr size_t THERM1 = 2;
         constexpr size_t THERM2 = 3;
         constexpr size_t THERM3 = 4;
@@ -15,7 +14,13 @@ namespace pins {
         constexpr size_t THERM_BAL_BOT = 2;
         constexpr size_t THERM_BAL_TOP = 3;
         constexpr size_t CURRENT = 1;
-    } // namespace LTC
+    } // namespace LTC1
+
+    namespace LTC2 { // BOTTOM
+        constexpr size_t THERM_BAL_BOT = 2;
+        constexpr size_t THERM_BAL_TOP = 3;
+        constexpr size_t CURRENT = 1;
+    } // namespace LTC2
 
     namespace ESP {
         constexpr gpio_num_t CONTACTOR = GPIO_NUM_16; // GPIO output
