@@ -7,9 +7,9 @@
 namespace hardware {
 
 constexpr int MAX_SPI_TRANSFER_SZ = 4096;
-const uint8_t SPI_MODE = 0;
-const int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
-const uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
+constexpr uint8_t SPI_MODE = 0;
+constexpr int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
+constexpr uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
 
 // Sets up GPIO pins as outputs
 void configure_gpio_output();
