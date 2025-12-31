@@ -69,6 +69,9 @@ class FaultManager {
         void clear_fault(size_t fault_bit);
         // Remove all current faults (start of new check cycle)
         void clear_current_faults();
+        // Return true if any new faults are present that were not in previous_set_faults
+        // (i.e., faults that have just occurred this cycle). Must be called before update_previous_faults().
+        bool new_faults_present() const;
         // Update previous_set_faults to include all currently set faults
         void update_previous_faults();
 		// Return true if any persistent or live faults are currently set or persistent faults still exist.

@@ -26,6 +26,11 @@ void FaultManager::clear_current_faults() {
     this->current_set_faults = 0;
 }
 
+bool FaultManager::new_faults_present() const {
+    uint32_t new_faults = this->current_set_faults & ~(this->previous_set_faults);
+    return new_faults != 0;
+}
+
 void FaultManager::update_previous_faults() {
     this->previous_set_faults |= this->current_set_faults;
 }
