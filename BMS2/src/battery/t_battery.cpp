@@ -24,6 +24,7 @@ TBattery::TBattery(uint32_t period)
     battery_data({}),
     parameters({}),
     fault_manager({}),
+    new_faults(false),
     any_bypassed(false) {}
 
 
@@ -67,6 +68,7 @@ void TBattery::check_and_set_faults() {
 		}
 	}
 
+    this->new_faults = this->fault_manager.new_faults_present();
 	this->fault_manager.update_previous_faults();
 }
 

@@ -29,10 +29,12 @@ class TBattery : public task_base::TaskBase {
 		params::Parameters parameters;
 		
 		faults::FaultManager fault_manager;
+        bool new_faults;
 
         bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
 
-		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults.
+		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults
+        // and sets new_faults flag.
 		void check_and_set_faults();
 
 	public:
