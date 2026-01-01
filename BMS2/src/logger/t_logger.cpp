@@ -24,7 +24,25 @@ void TLogger::write_buffer_to_spiffs() {
         return; // Nothing to write
     }
 
-    // TODO: write to SPIFFS file
+    // TODO: handle full check and delete parameter
+
+    // Open log file in append mode
+    FILE* file = std::fopen(LOG_FILE_PATH, "a");
+    if (file == nullptr) {
+        // TODO: Handle error
+        return;
+    }
+
+    // Write buffer to file
+    int written = std::fprintf(file, "%.*s", static_cast<int>(this->write_buffer_index), this->write_buffer);
+
+    if (written < 0) {
+        // TODO: Handle error
+    }
+
+
+    std::fclose(file);
+    this->write_buffer_index = 0; // Reset buffer index after writing
 }
 
 void TLogger::task() {
@@ -37,6 +55,7 @@ void TLogger::task() {
         std::visit(util::OverloadedVisit {
             [this](const q_logger::msg::LogLine& log_line) {
                 // Safety: assume log line fits in buffer
+                // TODO: make sure no null bytes are written
                 int written = std::snprintf(
                     this->log_line_buffer,
                     LOG_LINE_MAX_SIZE,

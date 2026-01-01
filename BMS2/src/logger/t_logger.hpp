@@ -16,6 +16,8 @@ constexpr UBaseType_t TASK_PRIORITY = 2;
 constexpr BaseType_t TASK_CORE_ID = 0;
 constexpr const char* TASK_NAME = "LoggingTask";
 
+constexpr const char* LOG_FILE_PATH = "/spiffs/log.csv";
+
 constexpr size_t WRITE_BUFFER_SIZE = 512; // Size of buffer for writing log lines
 constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line
 
