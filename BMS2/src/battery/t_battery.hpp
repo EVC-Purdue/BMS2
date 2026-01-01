@@ -33,6 +33,8 @@ class TBattery : public task_base::TaskBase {
 
         bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
 
+        size_t iters_without_log; // Number of iterations since last log write
+
 		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults
         // and sets new_faults flag.
 		void check_and_set_faults();

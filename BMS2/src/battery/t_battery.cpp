@@ -1,12 +1,15 @@
 #include <cstdint>
+#include <cstring>
 
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
+#include "esp_timer.h"
 
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
 #include "battery/parameters.hpp"
 #include "battery/battery.hpp"
+#include "logger/q_logger.hpp"
 #include "hardware/pins.hpp"
 #include "util/overloaded.hpp"
 #include "util/cmp.hpp"
@@ -25,7 +28,9 @@ TBattery::TBattery(uint32_t period)
     parameters({}),
     fault_manager({}),
     new_faults(false),
-    any_bypassed(false) {}
+    any_bypassed(false),
+    iters_without_log(0)
+    {}
 
 
 void TBattery::check_and_set_faults() {
@@ -90,18 +95,45 @@ void TBattery::task() {
         }, msg);
     }
 
-    switch (this->mode) {
-        case modes::Mode::IDLE:
-            // Handle IDLE mode operations
-            break;
-        case modes::Mode::MONITORING:
-            // Handle MONITORING mode operations
-            break;
-        case modes::Mode::BALANCING:
-            // Handle BALANCING mode operations
-            break;
+    // Reset new_faults before checking faults
+    this->new_faults = false;
+
+    this->check_and_set_faults();
+
+    // Handle operations based on the current mode
+    // switch (this->mode) {
+    //     case modes::Mode::IDLE:
+    //         // Handle IDLE mode operations
+    //         break;
+    //     case modes::Mode::MONITORING:
+    //         // Handle MONITORING mode operations
+    //         break;
+    //     case modes::Mode::BALANCING:
+    //         // Handle BALANCING mode operations
+    //         break;
+    // }
+
+    // integer division will floor the result, which is desired here
+    size_t log_interval_iters = this->parameters.log_speed / t_battery::TASK_PERIOD_MS;
+    if ((this->iters_without_log >= log_interval_iters) || this->new_faults) {
+        q_logger::msg::LogLine msg = {};
+        msg.timestamp = esp_timer_get_time();
+        for (size_t i = 0; i < battery::IC_COUNT; i++) {
+            memcpy(
+                &msg.voltages[i * battery::CELL_COUNT_PER_IC],
+                this->battery_data.ics[i].cell_voltages,
+                sizeof(this->battery_data.ics[i].cell_voltages)
+            );
+        }
+        msg.temps = this->battery_data.temps;
+        msg.current = this->battery_data.current;
+        msg.faults = this->fault_manager.get_current_set_faults();
+        xQueueSend(q_logger::g_logger_queue, &msg, portMAX_DELAY);
+
+        this->iters_without_log = 0;
+    } else {
+        this->iters_without_log++;
     }
-	
 }
 
 
