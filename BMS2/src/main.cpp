@@ -28,7 +28,7 @@ static spi_device_handle_t spi_handle = nullptr;
 
 extern "C" void app_main() {
     // Hardware configuration and setup
-	hardware::configure(&spi_handle);
+	hardware::configure(&spi_handle); // GPIO, SPI, LEDC, SPIFFS
 	hardware::setup_initial_gpio_states();
 
 	// Queue initialization
@@ -43,6 +43,7 @@ extern "C" void app_main() {
     }
 
 	// Task definitions
+    // It might make sense to construct these statically instead of on the stack?
 	t_battery::TBattery t_battery(t_battery::TASK_PERIOD_MS);
 	t_logger::TLogger t_logger(t_logger::TASK_PERIOD_MS);
 
