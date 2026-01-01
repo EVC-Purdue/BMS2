@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "esp_spiffs.h"
+#include "esp_err.h"
 
 #include "logger/q_logger.hpp"
 #include "util/overloaded.hpp"
@@ -28,7 +29,22 @@ void TLogger::write_buffer_to_spiffs() {
         return; // Nothing to write
     }
 
-    // TODO: handle full check and delete parameter
+    size_t total = 0;
+    size_t used = 0;
+    ESP_ERROR_CHECK(esp_spiffs_info(nullptr, &total, &used));
+    float usage_ratio = static_cast<float>(used) / static_cast<float>(total);
+    if (usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
+        if (this->param_delete_log_if_full) {
+            int result = std::remove(LOG_FILE_PATH);
+            if (result != 0) {
+                // TODO: Handle error
+                return;
+            }
+        } else {
+            // Do not write if storage is full and deletion is not allowed
+            return;
+        }
+    }
 
     // Open log file in append mode
     FILE* file = std::fopen(LOG_FILE_PATH, "a");
