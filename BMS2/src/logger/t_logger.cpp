@@ -102,13 +102,13 @@ void TLogger::task() {
                 );
                 this->write_buffer_index += written;
             },
-            [this](const q_logger::msg::ReadStart& read_start) {
+            [this](const q_logger::msg::ReadStart& _read_start) {
                 // Handle read start
             },
-            [this](const q_logger::msg::ReadEnd& read_end) {
+            [this](const q_logger::msg::ReadEnd& _read_end) {
                 // Handle read end
             },
-            [this](const q_logger::msg::Flush& flush) {
+            [this](const q_logger::msg::Flush& _flush) {
                 this->write_buffer_to_spiffs();
             }
         }, msg);
