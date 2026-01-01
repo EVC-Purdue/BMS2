@@ -7,6 +7,7 @@
 
 #include "logger/q_logger.hpp"
 #include "util/overloaded.hpp"
+#include "util/err.hpp"
 
 
 #include "logger/t_logger.hpp"
@@ -35,11 +36,7 @@ void TLogger::write_buffer_to_spiffs() {
     float usage_ratio = static_cast<float>(used) / static_cast<float>(total);
     if (usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
         if (this->param_delete_log_if_full) {
-            int result = std::remove(LOG_FILE_PATH);
-            if (result != 0) {
-                // TODO: Handle error
-                return;
-            }
+            UTIL_CHECK_ERR(std::remove(LOG_FILE_PATH) == 0);
         } else {
             // Do not write if storage is full and deletion is not allowed
             return;
@@ -48,18 +45,11 @@ void TLogger::write_buffer_to_spiffs() {
 
     // Open log file in append mode
     FILE* file = std::fopen(LOG_FILE_PATH, "a");
-    if (file == nullptr) {
-        // TODO: Handle error
-        return;
-    }
+    UTIL_CHECK_ERR(file != nullptr);
 
     // Write buffer to file
     int written = std::fprintf(file, "%.*s", static_cast<int>(this->write_buffer_index), this->write_buffer);
-
-    if (written < 0) {
-        // TODO: Handle error
-    }
-
+    UTIL_CHECK_ERR(written == static_cast<int>(this->write_buffer_index));
 
     std::fclose(file);
     this->write_buffer_index = 0; // Reset buffer index after writing
