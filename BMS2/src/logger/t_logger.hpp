@@ -16,11 +16,18 @@ constexpr UBaseType_t TASK_PRIORITY = 2;
 constexpr BaseType_t TASK_CORE_ID = 0;
 constexpr const char* TASK_NAME = "LoggingTask";
 
+constexpr size_t WRITE_BUFFER_SIZE = 512; // Size of buffer for writing log lines
+constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line
+
 
 
 class TLogger : public task_base::TaskBase {
 	private:
-		// Private members for logging functionality
+        size_t write_buffer_index;
+        char write_buffer[WRITE_BUFFER_SIZE];
+        char log_line_buffer[LOG_LINE_MAX_SIZE];
+
+        void write_buffer_to_spiffs();
 
 	public:
 		TLogger(uint32_t period);

@@ -1,4 +1,8 @@
+#include <cstdio>
+#include <cstring>
+
 #include "freertos/FreeRTOS.h"
+#include "esp_spiffs.h"
 
 #include "logger/q_logger.hpp"
 #include "util/overloaded.hpp"
@@ -11,16 +15,71 @@
 namespace t_logger {
 
 TLogger::TLogger(uint32_t period)
-	: task_base::TaskBase(period) {}
+	: task_base::TaskBase(period),
+    write_buffer_index(0) {}
+
+
+void TLogger::write_buffer_to_spiffs() {
+    if (this->write_buffer_index == 0) {
+        return; // Nothing to write
+    }
+
+    // TODO: write to SPIFFS file
+}
 
 void TLogger::task() {
+
+    // TODO: should there be a flush_requested system
 
     // Read and process all messages from the logger queue
 	q_logger::Message msg = {};
     while (xQueueReceive(q_logger::g_logger_queue, &msg, 0) == pdTRUE) {
         std::visit(util::OverloadedVisit {
             [this](const q_logger::msg::LogLine& log_line) {
-                // Handle log line
+                // Safety: assume log line fits in buffer
+                int written = std::snprintf(
+                    this->log_line_buffer,
+                    LOG_LINE_MAX_SIZE,
+                    "%lld,", log_line.timestamp
+                );
+                for (size_t i = 0; i < battery::IC_COUNT * battery::CELL_COUNT_PER_IC; i++) {
+                    written += std::snprintf(
+                        this->log_line_buffer + written,
+                        LOG_LINE_MAX_SIZE - written,
+                        "%lu,",
+                        log_line.voltages[i]
+                    );
+                }
+                for (size_t i = 0; i < battery::THERM_COUNT; i++) {
+                    written += std::snprintf(
+                        this->log_line_buffer + written,
+                        LOG_LINE_MAX_SIZE - written,
+                        "%.2f,",
+                        log_line.temps.therms[i]
+                    );
+                }
+                written += std::snprintf(
+                    this->log_line_buffer + written,
+                    LOG_LINE_MAX_SIZE - written,
+                    "%.2f,%.2f,%.2f,%.2f,%lu\n",
+                    log_line.temps.fet,
+                    log_line.temps.bal_bot,
+                    log_line.temps.bal_top,
+                    log_line.current,
+                    log_line.faults
+                );
+
+                // If the log line doesn't fit in the remaining buffer, flush first
+                if (this->write_buffer_index + written >= WRITE_BUFFER_SIZE) {
+                    this->write_buffer_to_spiffs();
+                }
+                // Copy log line to write buffer
+                std::memcpy(
+                    this->write_buffer + this->write_buffer_index,
+                    this->log_line_buffer,
+                    written
+                );
+                this->write_buffer_index += written;
             },
             [this](const q_logger::msg::ReadStart& read_start) {
                 // Handle read start
@@ -29,7 +88,7 @@ void TLogger::task() {
                 // Handle read end
             },
             [this](const q_logger::msg::Flush& flush) {
-                // Handle flush
+                this->write_buffer_to_spiffs();
             }
         }, msg);
     }
