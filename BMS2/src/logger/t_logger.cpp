@@ -17,6 +17,8 @@ namespace t_logger {
 TLogger::TLogger(uint32_t period)
 	: task_base::TaskBase(period),
     write_buffer_index(0) {}
+    write_buffer{0},
+    log_line_buffer{0}
 
 
 void TLogger::write_buffer_to_spiffs() {
