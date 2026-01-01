@@ -16,9 +16,11 @@ namespace t_logger {
 
 TLogger::TLogger(uint32_t period)
 	: task_base::TaskBase(period),
-    write_buffer_index(0) {}
+    param_delete_log_if_full(false),
+    write_buffer_index(0),
     write_buffer{0},
     log_line_buffer{0}
+    {}
 
 
 void TLogger::write_buffer_to_spiffs() {
@@ -110,6 +112,9 @@ void TLogger::task() {
             },
             [this](const q_logger::msg::Flush& _flush) {
                 this->write_buffer_to_spiffs();
+            },
+            [this](const q_logger::msg::SetDeleteLog& sdl) {
+                this->param_delete_log_if_full = sdl.delete_log;
             }
         }, msg);
     }

@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstring>
+#include <optional>
 
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
@@ -88,6 +89,12 @@ void TBattery::task() {
             },
             [this](const params::msg::Message& p_msg) {
                 this->parameters.set_parameter(p_msg);
+                std::optional<bool> forward_delete_log = this->parameters.try_consume_forward_delete_log();
+                if (forward_delete_log.has_value()) {
+                    q_logger::msg::SetDeleteLog log_msg = {};
+                    log_msg.delete_log = forward_delete_log.value();
+                    xQueueSend(q_logger::g_logger_queue, &log_msg, portMAX_DELAY);
+                }
             },
             [this](const faults::msg::ClearFault& cf) {
                 this->fault_manager.clear_fault(cf.fault_index);

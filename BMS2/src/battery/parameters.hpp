@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <variant>
+#include <optional>
+
 
 
 namespace params {
@@ -55,6 +57,8 @@ namespace msg {
 
 class Parameters {
     private:
+        std::optional<bool> forward_delete_log;
+
         void set_parameter_f32(const char key[KEY_CHAR_COUNT], float value);
         void set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value);
         void set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value);
@@ -80,7 +84,7 @@ class Parameters {
         float t_reset_bal = PARAMETER_T_RESET_BAL;
 
         uint32_t log_speed = PARAMETER_LOG_SPEED;
-        bool delete_log = PARAMETER_DELETE_LOG;
+        bool delete_log = PARAMETER_DELETE_LOG; // forwarded to t_logger
 
         float p_max = PARAMETER_P_MAX;
 
@@ -89,7 +93,11 @@ class Parameters {
 
         // Later TODO: load params from SPIFFS
 
+        // Sets the corresponding parameter based on the message
+        // Responsible for setting the forward_* variables as well
         void set_parameter(const msg::Message& msg);
+
+        std::optional<bool> try_consume_forward_delete_log();
 };
 
 

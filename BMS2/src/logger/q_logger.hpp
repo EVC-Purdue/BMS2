@@ -38,13 +38,18 @@ namespace msg {
 	struct Flush {
 		// No additional data needed for flush
 	};
+
+    struct SetDeleteLog {
+        bool delete_log;
+    };
 } // namespace msg
 
 using Message = std::variant<
     msg::LogLine,
     msg::ReadStart,
     msg::ReadEnd,
-    msg::Flush
+    msg::Flush,
+    msg::SetDeleteLog
 >;
 
 

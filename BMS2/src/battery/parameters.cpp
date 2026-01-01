@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstring>
+#include <optional>
 
 #include "util/overloaded.hpp"
 
@@ -57,6 +58,7 @@ void Parameters::set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value) 
         this->bypass = value;
     } else if (std::strncmp(key, "delete_log", sizeof("delete_log")) == 0) {
         this->delete_log = value;
+        this->forward_delete_log = std::optional<bool>(value);
     }
 }
 
@@ -76,6 +78,16 @@ void Parameters::set_parameter(const msg::Message& msg) {
         msg
     );   
 
+}
+
+std::optional<bool> Parameters::try_consume_forward_delete_log() {
+    if (this->forward_delete_log.has_value()) {
+        std::optional<bool> ret = this->forward_delete_log;
+        this->forward_delete_log.reset();
+        return ret;
+    } else {
+        return std::nullopt;
+    }
 }
 
 } // namespace params

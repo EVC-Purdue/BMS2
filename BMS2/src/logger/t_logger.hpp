@@ -25,6 +25,8 @@ constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line
 
 class TLogger : public task_base::TaskBase {
 	private:
+        bool param_delete_log_if_full;
+
         size_t write_buffer_index;
         char write_buffer[WRITE_BUFFER_SIZE];
         char log_line_buffer[LOG_LINE_MAX_SIZE];
