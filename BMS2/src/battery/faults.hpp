@@ -63,6 +63,8 @@ class FaultManager {
     public:
         FaultManager();
 
+        uint32_t get_current_set_faults() const;
+
 		// If condition is true, set the fault bit at fault_bit index in current_set_faults
         void set_fault(bool condition, size_t fault_bit);
 		// Remove the fault bit at fault_bit index from previous_set_faults

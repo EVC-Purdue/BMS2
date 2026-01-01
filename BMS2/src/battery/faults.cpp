@@ -10,8 +10,12 @@ namespace faults {
 
 FaultManager::FaultManager() : current_set_faults(0), previous_set_faults(0) {}
 
-// Not sure if this should also set the previous fault bit instead of needing to call
-// update_previous_faults separately?
+
+uint32_t FaultManager::get_current_set_faults() const {
+    return this->current_set_faults;
+}
+
+
 void FaultManager::set_fault(bool condition, size_t fault_bit) {
     if (condition) {
         this->current_set_faults |= (static_cast<uint32_t>(1) << fault_bit);
