@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <utility>
 
 #include "util/overloaded.hpp"
 
@@ -81,13 +82,7 @@ void Parameters::set_parameter(const msg::Message& msg) {
 }
 
 std::optional<bool> Parameters::try_consume_forward_delete_log() {
-    if (this->forward_delete_log.has_value()) {
-        std::optional<bool> ret = this->forward_delete_log;
-        this->forward_delete_log.reset();
-        return ret;
-    } else {
-        return std::nullopt;
-    }
+    return std::exchange(this->forward_delete_log, std::nullopt);
 }
 
 } // namespace params
