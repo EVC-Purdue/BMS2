@@ -25,27 +25,27 @@ static_assert(TASK_PERIOD_MS != 0, "TASK_PERIOD_MS must be non-zero, as it is us
 
 
 class TBattery : public task_base::TaskBase {
-	private:
-		modes::Mode mode;
-		battery::BatteryData battery_data;
+    private:
+        modes::Mode mode;
+        battery::BatteryData battery_data;
 
-		params::Parameters parameters;
-		
-		faults::FaultManager fault_manager;
+        params::Parameters parameters;
+        
+        faults::FaultManager fault_manager;
         bool new_faults;
 
         bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
 
         size_t iters_without_log; // Number of iterations since last log write
 
-		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults
+        // Check all battery parameters and set faults accordingly. Also updates previous_set_faults
         // and sets new_faults flag.
-		void check_and_set_faults();
+        void check_and_set_faults();
 
-	public:
-		TBattery(uint32_t period);
+    public:
+        TBattery(uint32_t period);
 
-		void task() override;
+        void task() override;
 };
 
 

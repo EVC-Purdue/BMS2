@@ -29,7 +29,7 @@ constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line. 
 
 
 class TLogger : public task_base::TaskBase {
-	private:
+    private:
         // If the SPIFFS usage is above the max ratio, whether to delete the log file to make space
         // If false, new log data will be discarded when storage is full
         bool param_delete_log_if_full;
@@ -51,10 +51,10 @@ class TLogger : public task_base::TaskBase {
         // Flushes the current write buffer to the SPIFFS log file and resets the buffer index.
         void write_buffer_to_spiffs();
 
-	public:
-		TLogger(uint32_t period);
+    public:
+        TLogger(uint32_t period);
 
-		void task() override;
+        void task() override;
 };
 
 
