@@ -10,6 +10,8 @@
 
 namespace t_logger {
 
+// TODO: if TLogger is 100% reactionary/event based on queue messages, it may be better to
+// pend forever on a queue receive rather than have a periodic task
 constexpr uint32_t TASK_PERIOD_MS = 1000;
 constexpr uint32_t TASK_STACK_SIZE = 4096;
 constexpr UBaseType_t TASK_PRIORITY = 2;
