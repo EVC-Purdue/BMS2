@@ -4,13 +4,13 @@
 namespace util
 {
 
-	template <class... Ts>
-	struct OverloadedVisit : Ts...
-	{
-		using Ts::operator()...;
-	};
-	template <class... Ts>
-	OverloadedVisit(Ts...) -> OverloadedVisit<Ts...>;
+    template <class... Ts>
+    struct OverloadedVisit : Ts...
+    {
+        using Ts::operator()...;
+    };
+    template <class... Ts>
+    OverloadedVisit(Ts...) -> OverloadedVisit<Ts...>;
 
 } // namespace util
 

@@ -7,20 +7,20 @@
 namespace task_base {
 
 class TaskBase {
-	public:
-		TaskBase(uint32_t period);
+    public:
+        TaskBase(uint32_t period);
 
-		// Virtual destructor for proper cleanup of derived classes
-		virtual ~TaskBase() = default;
+        // Virtual destructor for proper cleanup of derived classes
+        virtual ~TaskBase() = default;
 
-		// Pure virtual function to be implemented by derived classes
-		virtual void task() = 0;
+        // Pure virtual function to be implemented by derived classes
+        virtual void task() = 0;
 
-		// Function to start the task
-		static void taskWrapper(void* self_ptr);
+        // Function to start the task
+        static void taskWrapper(void* self_ptr);
 
-	private:
-		uint32_t period_ms;
+    private:
+        uint32_t period_ms;
 };
 
 

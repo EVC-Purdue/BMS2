@@ -18,7 +18,7 @@ extern QueueHandle_t g_battery_queue;
 constexpr UBaseType_t QUEUE_SIZE = 10;
 
 namespace msg {
-	struct SetMode {
+    struct SetMode {
         modes::Mode mode;
     };
 } // namespace msg
