@@ -39,6 +39,7 @@ class TLogger : public task_base::TaskBase {
         char write_buffer[WRITE_BUFFER_SIZE];
         char log_line_buffer[LOG_LINE_MAX_SIZE];
 
+        // Flushes the current write buffer to the SPIFFS log file and resets the buffer index.
         void write_buffer_to_spiffs();
 
 	public:
