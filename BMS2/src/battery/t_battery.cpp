@@ -80,8 +80,8 @@ void TBattery::check_and_set_faults() {
 
 void TBattery::task() {
     // Read and process all messages from the battery queue
-	q_battery::Message msg = {};
-    while (xQueueReceive(q_battery::g_battery_queue, &msg, 0) == pdTRUE) {
+	q_battery::Message rx_msg = {};
+    while (xQueueReceive(q_battery::g_battery_queue, &rx_msg, 0) == pdTRUE) {
         std::visit(util::OverloadedVisit {
             [this](const q_battery::msg::SetMode& sm) {
                 this->mode = sm.mode;
@@ -99,7 +99,7 @@ void TBattery::task() {
             [this](const faults::msg::ClearFault& cf) {
                 this->fault_manager.clear_fault(cf.fault_index);
             }
-        }, msg);
+        }, rx_msg);
     }
 
     // Reset new_faults before checking faults

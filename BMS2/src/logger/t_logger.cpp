@@ -60,8 +60,8 @@ void TLogger::task() {
     // TODO: should there be a flush_requested system
 
     // Read and process all messages from the logger queue
-	q_logger::Message msg = {};
-    while (xQueueReceive(q_logger::g_logger_queue, &msg, 0) == pdTRUE) {
+	q_logger::Message rx_msg = {};
+    while (xQueueReceive(q_logger::g_logger_queue, &rx_msg, 0) == pdTRUE) {
         std::visit(util::OverloadedVisit {
             [this](const q_logger::msg::LogLine& log_line) {
                 // Safety: assume log line fits in buffer
@@ -122,7 +122,7 @@ void TLogger::task() {
             [this](const q_logger::msg::SetDeleteLog& sdl) {
                 this->param_delete_log_if_full = sdl.delete_log;
             }
-        }, msg);
+        }, rx_msg);
     }
 	
 }
