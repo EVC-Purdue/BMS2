@@ -64,6 +64,8 @@ class Parameters {
         void set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value);
 
     public:
+        Parameters();
+
         bool bypass = PARAMETER_BYPASS;
         float v_bypass = PARAMETER_V_BYPASS;
 

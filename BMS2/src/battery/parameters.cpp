@@ -14,6 +14,10 @@ namespace params {
 
     // TODO: validation of parameers (reasonable ranges, how they are set relative to each other, etc)
 
+Parameters::Parameters()
+    : forward_delete_log(std::nullopt)
+    {}
+
 
 void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) {
     if (std::strncmp(key, "v_bypass", sizeof("v_bypass")) == 0) {
