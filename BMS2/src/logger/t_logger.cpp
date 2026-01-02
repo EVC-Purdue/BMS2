@@ -46,7 +46,7 @@ void TLogger::write_buffer_to_spiffs() {
 
     if (this->spiffs_usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
         if (this->param_delete_log_if_full) {
-            UTIL_CHECK_ERR(std::remove(LOG_FILE_PATH) == 0);
+            UTIL_CHECK_REQUIRE(std::remove(LOG_FILE_PATH) == 0);
         } else {
             // Do not write if storage is full and deletion is not allowed
             this->write_buffer_index = 0; // Discard/reset buffer
@@ -56,7 +56,7 @@ void TLogger::write_buffer_to_spiffs() {
 
     // Open log file in append mode
     FILE* file = std::fopen(LOG_FILE_PATH, "a");
-    UTIL_CHECK_ERR(file != nullptr);
+    UTIL_CHECK_REQUIRE(file != nullptr);
 
     // Write buffer to file
     int written = std::fprintf(file, "%.*s", static_cast<int>(this->write_buffer_index), this->write_buffer);
@@ -64,7 +64,7 @@ void TLogger::write_buffer_to_spiffs() {
 
     // Close file before checking success
     std::fclose(file);
-    UTIL_CHECK_ERR(write_success);
+    UTIL_CHECK_REQUIRE(write_success);
 
     this->write_buffer_index = 0; // Reset buffer index after writing
 }

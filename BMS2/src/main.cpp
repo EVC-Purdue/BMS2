@@ -34,10 +34,10 @@ extern "C" void app_main() {
 
     // Queue initialization
     q_battery::g_battery_queue = xQueueCreate(q_battery::QUEUE_SIZE, sizeof(q_battery::Message));
-    UTIL_CHECK_ERR(q_battery::g_battery_queue != nullptr);
+    UTIL_CHECK_REQUIRE(q_battery::g_battery_queue != nullptr);
 
     q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
-    UTIL_CHECK_ERR(q_logger::g_logger_queue != nullptr);
+    UTIL_CHECK_REQUIRE(q_logger::g_logger_queue != nullptr);
 
     // Task definitions
     // It might make sense to construct these statically instead of on the stack?
@@ -56,7 +56,7 @@ extern "C" void app_main() {
         &g_battery_tcb,
         t_battery::TASK_CORE_ID
     );
-    UTIL_CHECK_ERR(battery_task_handle != nullptr);
+    UTIL_CHECK_REQUIRE(battery_task_handle != nullptr);
     TaskHandle_t logger_task_handle = xTaskCreateStaticPinnedToCore(
         &t_logger::TLogger::taskWrapper,
         t_logger::TASK_NAME,
@@ -67,7 +67,7 @@ extern "C" void app_main() {
         &g_logger_tcb,
         t_logger::TASK_CORE_ID
     );
-    UTIL_CHECK_ERR(logger_task_handle != nullptr);
+    UTIL_CHECK_REQUIRE(logger_task_handle != nullptr);
     
 
     // Not sure if it is okay if app_main returns??
