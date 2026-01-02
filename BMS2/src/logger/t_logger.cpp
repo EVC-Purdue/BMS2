@@ -6,6 +6,7 @@
 #include "esp_err.h"
 
 #include "logger/q_logger.hpp"
+#include "battery/faults.hpp"
 #include "util/overloaded.hpp"
 #include "util/err.hpp"
 
@@ -100,12 +101,25 @@ void TLogger::task() {
                 written += std::snprintf(
                     this->log_line_buffer + written,
                     LOG_LINE_MAX_SIZE - written,
-                    "%.2f,%.2f,%.2f,%.2f,%lu\n",
+                    "%.2f,%.2f,%.2f,%.2f,",
                     log_line.temps.fet,
                     log_line.temps.bal_bot,
                     log_line.temps.bal_top,
-                    log_line.current,
-                    log_line.faults
+                    log_line.current
+                );
+                for (size_t i = 0; i < faults::WarningFault::WARNING_FAULTS_END; i++) {
+                    bool fault_active = (log_line.faults & (1 << i)) != 0;
+                    written += std::snprintf(
+                        this->log_line_buffer + written,
+                        LOG_LINE_MAX_SIZE - written,
+                        "%d",
+                        fault_active ? 1 : 0
+                    );
+                }
+                written += std::snprintf(
+                    this->log_line_buffer + written,
+                    LOG_LINE_MAX_SIZE - written,
+                    "\n"
                 );
 
                 // If the log line doesn't fit in the remaining buffer, flush first
