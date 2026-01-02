@@ -99,7 +99,7 @@ void TLogger::task() {
                 );
 
                 // If the log line doesn't fit in the remaining buffer, flush first
-                if (this->write_buffer_index + written >= WRITE_BUFFER_SIZE) {
+                if (this->write_buffer_index + written > WRITE_BUFFER_SIZE) {
                     this->write_buffer_to_spiffs();
                 }
                 // Copy log line to write buffer
