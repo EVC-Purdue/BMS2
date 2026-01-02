@@ -121,7 +121,7 @@ void TBattery::task() {
     // }
 
     // integer division will floor the result, which is desired here
-    size_t log_interval_iters = this->parameters.log_inter / t_battery::TASK_PERIOD_MS;
+    uint32_t log_interval_iters = this->parameters.log_inter / t_battery::TASK_PERIOD_MS;
     if ((this->iters_without_log >= log_interval_iters) || this->new_faults) {
         q_logger::msg::LogLine msg = {};
         msg.timestamp = esp_timer_get_time();

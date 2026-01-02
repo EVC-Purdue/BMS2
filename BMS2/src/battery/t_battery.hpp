@@ -21,6 +21,9 @@ constexpr BaseType_t TASK_CORE_ID = 1;
 constexpr const char* TASK_NAME = "BatteryTask";
 
 
+static_assert(TASK_PERIOD_MS != 0, "TASK_PERIOD_MS must be non-zero, as it is used as a divisor");
+
+
 class TBattery : public task_base::TaskBase {
 	private:
 		modes::Mode mode;
