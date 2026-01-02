@@ -46,6 +46,7 @@ void TLogger::write_buffer_to_spiffs() {
             UTIL_CHECK_ERR(std::remove(LOG_FILE_PATH) == 0);
         } else {
             // Do not write if storage is full and deletion is not allowed
+            this->write_buffer_index = 0; // Discard/reset buffer
             return;
         }
     }
