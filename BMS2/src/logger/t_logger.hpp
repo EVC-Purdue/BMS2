@@ -19,6 +19,8 @@ constexpr const char* TASK_NAME = "LoggingTask";
 constexpr float SPIFFS_MAX_USAGE_RATIO = 0.8f; 
 constexpr const char* LOG_FILE_PATH = "/spiffs/log.csv";
 
+constexpr size_t SPIFFS_RECHECK_USAGE_WRITES_COUNT = 20; // Number of writes after which to recheck SPIFFS usage
+
 constexpr size_t WRITE_BUFFER_SIZE = 512; // Size of buffer for writing log lines
 constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line
 
@@ -28,6 +30,9 @@ class TLogger : public task_base::TaskBase {
 	private:
         bool param_delete_log_if_full;
 
+        float spiffs_usage_ratio;
+        size_t spiffs_usage_write_count;
+        
         size_t write_buffer_index;
         char write_buffer[WRITE_BUFFER_SIZE];
         char log_line_buffer[LOG_LINE_MAX_SIZE];

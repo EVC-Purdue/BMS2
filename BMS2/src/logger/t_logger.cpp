@@ -30,11 +30,18 @@ void TLogger::write_buffer_to_spiffs() {
         return; // Nothing to write
     }
 
-    size_t total = 0;
-    size_t used = 0;
-    ESP_ERROR_CHECK(esp_spiffs_info(nullptr, &total, &used));
-    float usage_ratio = static_cast<float>(used) / static_cast<float>(total);
-    if (usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
+    // Check SPIFFS usage
+    if (this->spiffs_usage_write_count >= SPIFFS_RECHECK_USAGE_WRITES_COUNT) {
+        size_t total = 0;
+        size_t used = 0;
+        ESP_ERROR_CHECK(esp_spiffs_info(nullptr, &total, &used));
+        this->spiffs_usage_ratio = static_cast<float>(used) / static_cast<float>(total);
+        this->spiffs_usage_write_count = 0;
+    } else {
+        this->spiffs_usage_write_count++;
+    }
+
+    if (this->spiffs_usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
         if (this->param_delete_log_if_full) {
             UTIL_CHECK_ERR(std::remove(LOG_FILE_PATH) == 0);
         } else {
