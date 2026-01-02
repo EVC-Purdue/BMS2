@@ -67,10 +67,4 @@ extern "C" void app_main() {
         t_logger::TASK_CORE_ID
     );
     UTIL_CHECK_REQUIRE(logger_task_handle != nullptr);
-    
-
-    // Not sure if it is okay if app_main returns??
-    while (true) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
 }
