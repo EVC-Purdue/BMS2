@@ -77,19 +77,19 @@ void TLogger::task() {
     q_logger::Message rx_msg = {};
     while (xQueueReceive(q_logger::g_logger_queue, &rx_msg, 0) == pdTRUE) {
         std::visit(util::OverloadedVisit {
-            [this](const q_logger::msg::LogLine& log_line) {
+            [this](const q_logger::msg::LogLine& m) {
                 // Safety: assume log line fits in buffer
                 int written = std::snprintf(
                     this->log_line_buffer,
                     LOG_LINE_MAX_SIZE,
-                    "%lld,", log_line.timestamp
+                    "%lld,", m.timestamp
                 );
                 for (size_t i = 0; i < battery::IC_COUNT * battery::CELL_COUNT_PER_IC; i++) {
                     written += std::snprintf(
                         this->log_line_buffer + written,
                         LOG_LINE_MAX_SIZE - written,
                         "%lu,",
-                        log_line.voltages[i]
+                        m.voltages[i]
                     );
                 }
                 for (size_t i = 0; i < battery::THERM_COUNT; i++) {
@@ -97,20 +97,20 @@ void TLogger::task() {
                         this->log_line_buffer + written,
                         LOG_LINE_MAX_SIZE - written,
                         "%.2f,",
-                        log_line.temps.therms[i]
+                        m.temps.therms[i]
                     );
                 }
                 written += std::snprintf(
                     this->log_line_buffer + written,
                     LOG_LINE_MAX_SIZE - written,
                     "%.2f,%.2f,%.2f,%.2f,",
-                    log_line.temps.fet,
-                    log_line.temps.bal_bot,
-                    log_line.temps.bal_top,
-                    log_line.current
+                    m.temps.fet,
+                    m.temps.bal_bot,
+                    m.temps.bal_top,
+                    m.current
                 );
                 for (size_t i = 0; i < faults::WarningFault::WARNING_FAULTS_END; i++) {
-                    bool fault_active = (log_line.faults & (1 << i)) != 0;
+                    bool fault_active = (m.faults & (1 << i)) != 0;
                     written += std::snprintf(
                         this->log_line_buffer + written,
                         LOG_LINE_MAX_SIZE - written,
@@ -136,17 +136,17 @@ void TLogger::task() {
                 );
                 this->write_buffer_index += written;
             },
-            [this](const q_logger::msg::ReadStart& _read_start) {
+            [this](const q_logger::msg::ReadStart& _m) {
                 // Handle read start
             },
-            [this](const q_logger::msg::ReadEnd& _read_end) {
+            [this](const q_logger::msg::ReadEnd& _m) {
                 // Handle read end
             },
-            [this](const q_logger::msg::Flush& _flush) {
+            [this](const q_logger::msg::Flush& _m) {
                 this->write_buffer_to_spiffs();
             },
-            [this](const q_logger::msg::SetDeleteLog& sdl) {
-                this->param_delete_log_if_full = sdl.delete_log;
+            [this](const q_logger::msg::SetDeleteLog& m) {
+                this->param_delete_log_if_full = m.delete_log;
             }
         }, rx_msg);
     }
