@@ -20,6 +20,8 @@ namespace t_logger {
 TLogger::TLogger(uint32_t period)
     : task_base::TaskBase(period),
     param_delete_log_if_full(false),
+    spiffs_usage_ratio(0.0f),
+    spiffs_usage_write_count(0),
     write_buffer_index(0),
     write_buffer{0},
     log_line_buffer{0}
