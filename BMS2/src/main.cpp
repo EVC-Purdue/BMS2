@@ -12,24 +12,27 @@
 #include "logger/q_logger.hpp"
 #include "util/err.hpp"
 
+// Tasks
+static t_battery::TBattery gs_t_battery(t_battery::TASK_PERIOD_MS);
+static t_logger::TLogger gs_t_logger(t_logger::TASK_PERIOD_MS);
 
 // Task control blocks (TCBs)
-static StaticTask_t g_battery_tcb = {};
-static StaticTask_t g_logger_tcb = {};
+static StaticTask_t gs_battery_tcb = {};
+static StaticTask_t gs_logger_tcb = {};
 
 
 // Task stacks
-static StackType_t g_battery_stack[t_battery::TASK_STACK_SIZE];
-static StackType_t g_logger_stack[t_logger::TASK_STACK_SIZE];
+static StackType_t gs_battery_stack[t_battery::TASK_STACK_SIZE];
+static StackType_t gs_logger_stack[t_logger::TASK_STACK_SIZE];
 
 // Hardware peripherals
-static spi_device_handle_t spi_handle = nullptr;
+static spi_device_handle_t gs_spi_handle = nullptr;
 
 
 
 extern "C" void app_main() {
     // Hardware configuration and setup
-    hardware::configure(&spi_handle); // GPIO, SPI, LEDC, SPIFFS
+    hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
 
     // Queue initialization
@@ -39,39 +42,29 @@ extern "C" void app_main() {
     q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
     UTIL_CHECK_REQUIRE(q_logger::g_logger_queue != nullptr);
 
-    // Task definitions
-    // It might make sense to construct these statically instead of on the stack?
-    t_battery::TBattery t_battery(t_battery::TASK_PERIOD_MS);
-    t_logger::TLogger t_logger(t_logger::TASK_PERIOD_MS);
-
 
     // Start tasks
     TaskHandle_t battery_task_handle = xTaskCreateStaticPinnedToCore(
         &t_battery::TBattery::taskWrapper,
         t_battery::TASK_NAME,
         t_battery::TASK_STACK_SIZE,
-        &t_battery,
+        &gs_t_battery,
         t_battery::TASK_PRIORITY,
-        g_battery_stack,
-        &g_battery_tcb,
+        gs_battery_stack,
+        &gs_battery_tcb,
         t_battery::TASK_CORE_ID
     );
+
     UTIL_CHECK_REQUIRE(battery_task_handle != nullptr);
     TaskHandle_t logger_task_handle = xTaskCreateStaticPinnedToCore(
         &t_logger::TLogger::taskWrapper,
         t_logger::TASK_NAME,
         t_logger::TASK_STACK_SIZE,
-        &t_logger,
+        &gs_t_logger,
         t_logger::TASK_PRIORITY,
-        g_logger_stack,
-        &g_logger_tcb,
+        gs_logger_stack,
+        &gs_logger_tcb,
         t_logger::TASK_CORE_ID
     );
     UTIL_CHECK_REQUIRE(logger_task_handle != nullptr);
-    
-
-    // Not sure if it is okay if app_main returns??
-    while (true) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
 }
