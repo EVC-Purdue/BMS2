@@ -1,12 +1,16 @@
 #include <cstdint>
+#include <cstring>
+#include <optional>
 
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
+#include "esp_timer.h"
 
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
 #include "battery/parameters.hpp"
 #include "battery/battery.hpp"
+#include "logger/q_logger.hpp"
 #include "hardware/pins.hpp"
 #include "util/overloaded.hpp"
 #include "util/cmp.hpp"
@@ -24,7 +28,10 @@ TBattery::TBattery(uint32_t period)
     battery_data({}),
     parameters({}),
     fault_manager({}),
-    any_bypassed(false) {}
+    new_faults(false),
+    any_bypassed(false),
+    iters_without_log(0)
+    {}
 
 
 void TBattery::check_and_set_faults() {
@@ -67,13 +74,14 @@ void TBattery::check_and_set_faults() {
 		}
 	}
 
+    this->new_faults = this->fault_manager.new_faults_present();
 	this->fault_manager.update_previous_faults();
 }
 
 void TBattery::task() {
     // Read and process all messages from the battery queue
-	q_battery::Message msg = {};
-    while (xQueueReceive(q_battery::g_battery_queue, &msg, 0) == pdTRUE) {
+	q_battery::Message rx_msg = {};
+    while (xQueueReceive(q_battery::g_battery_queue, &rx_msg, 0) == pdTRUE) {
         std::visit(util::OverloadedVisit {
             [this](const q_battery::msg::SetMode& sm) {
                 this->mode = sm.mode;
@@ -81,25 +89,58 @@ void TBattery::task() {
             },
             [this](const params::msg::Message& p_msg) {
                 this->parameters.set_parameter(p_msg);
+                std::optional<bool> forward_delete_log = this->parameters.try_consume_forward_delete_log();
+                if (forward_delete_log.has_value()) {
+                    q_logger::msg::SetDeleteLog log_msg = {};
+                    log_msg.delete_log = forward_delete_log.value();
+                    xQueueSend(q_logger::g_logger_queue, &log_msg, portMAX_DELAY);
+                }
             },
             [this](const faults::msg::ClearFault& cf) {
                 this->fault_manager.clear_fault(cf.fault_index);
             }
-        }, msg);
+        }, rx_msg);
     }
 
-    switch (this->mode) {
-        case modes::Mode::IDLE:
-            // Handle IDLE mode operations
-            break;
-        case modes::Mode::MONITORING:
-            // Handle MONITORING mode operations
-            break;
-        case modes::Mode::BALANCING:
-            // Handle BALANCING mode operations
-            break;
+    // Reset new_faults before checking faults
+    this->new_faults = false;
+
+    this->check_and_set_faults();
+
+    // Handle operations based on the current mode
+    // switch (this->mode) {
+    //     case modes::Mode::IDLE:
+    //         // Handle IDLE mode operations
+    //         break;
+    //     case modes::Mode::MONITORING:
+    //         // Handle MONITORING mode operations
+    //         break;
+    //     case modes::Mode::BALANCING:
+    //         // Handle BALANCING mode operations
+    //         break;
+    // }
+
+    // integer division will floor the result, which is desired here
+    uint32_t log_interval_iters = this->parameters.log_inter / t_battery::TASK_PERIOD_MS;
+    if ((this->iters_without_log >= log_interval_iters) || this->new_faults) {
+        q_logger::msg::LogLine msg = {};
+        msg.timestamp = esp_timer_get_time();
+        for (size_t i = 0; i < battery::IC_COUNT; i++) {
+            memcpy(
+                &msg.voltages[i * battery::CELL_COUNT_PER_IC],
+                this->battery_data.ics[i].cell_voltages,
+                sizeof(this->battery_data.ics[i].cell_voltages)
+            );
+        }
+        msg.temps = this->battery_data.temps;
+        msg.current = this->battery_data.current;
+        msg.faults = this->fault_manager.get_current_set_faults();
+        xQueueSend(q_logger::g_logger_queue, &msg, portMAX_DELAY);
+
+        this->iters_without_log = 0;
+    } else {
+        this->iters_without_log++;
     }
-	
 }
 
 

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <variant>
+#include <optional>
+
 
 
 namespace params {
@@ -22,7 +24,7 @@ constexpr float PARAMETER_I_MAX = 150.0f;      // max discharge current
 constexpr float PARAMETER_I_MIN = -50.0f;      // max charge current
 constexpr float PARAMETER_T_MAX_BAL = 50.0f;   // max temp for balancing
 constexpr float PARAMETER_T_RESET_BAL = 40.0f; // reset temp for balancing (once it goes below this we can balance again)
-constexpr uint32_t PARAMETER_LOG_SPEED = 1000; // How often to save to log in monitor state (ms)
+constexpr uint32_t PARAMETER_LOG_INTER = 1000; // How often to save to log in monitor state (ms). Should be multiple of t_battery::TASK_PERIOD_MS
 constexpr bool PARAMETER_DELETE_LOG = false;   // delete log to make space if full
 // constexpr float PARAMETER_V_CAN_CHARGE = 100.8f; // Total voltage to charge to. Sent over CAN
 // constexpr float PARAMETER_I_CAN_CHARGE = 10.0f;  // Current to charge at. Sent over CAN
@@ -55,11 +57,15 @@ namespace msg {
 
 class Parameters {
     private:
+        std::optional<bool> forward_delete_log;
+
         void set_parameter_f32(const char key[KEY_CHAR_COUNT], float value);
         void set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value);
         void set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value);
 
     public:
+        Parameters();
+
         bool bypass = PARAMETER_BYPASS;
         float v_bypass = PARAMETER_V_BYPASS;
 
@@ -79,8 +85,8 @@ class Parameters {
         float t_max_bal = PARAMETER_T_MAX_BAL;
         float t_reset_bal = PARAMETER_T_RESET_BAL;
 
-        uint32_t log_speed = PARAMETER_LOG_SPEED;
-        bool delete_log = PARAMETER_DELETE_LOG;
+        uint32_t log_inter = PARAMETER_LOG_INTER;
+        bool delete_log = PARAMETER_DELETE_LOG; // forwarded to t_logger
 
         float p_max = PARAMETER_P_MAX;
 
@@ -89,7 +95,11 @@ class Parameters {
 
         // Later TODO: load params from SPIFFS
 
+        // Sets the corresponding parameter based on the message
+        // Responsible for setting the forward_* variables as well
         void set_parameter(const msg::Message& msg);
+
+        std::optional<bool> try_consume_forward_delete_log();
 };
 
 

@@ -2,6 +2,7 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "driver/ledc.h"
+#include "esp_spiffs.h"
 #include "esp_err.h"
 
 #include "hardware/pins.hpp"
@@ -78,10 +79,21 @@ void configure_ledc() {
     ESP_ERROR_CHECK(ledc_channel_config(&channel));
 }
 
+void configure_spiffs() {
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = SPIFFS_BASE_PATH,
+        .partition_label = nullptr,
+        .max_files = SPIFFS_MAX_FILES,
+        .format_if_mount_failed = SPIFFS_FORMAT_IF_MOUNT_FAILED
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+}
+
 void configure(spi_device_handle_t* spi_handle) {
     configure_gpio_output();
     configure_spi(spi_handle);
     configure_ledc();
+    configure_spiffs();
 }
 
 void setup_initial_gpio_states() {

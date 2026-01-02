@@ -1,5 +1,7 @@
 #include <cstdint>
 #include <cstring>
+#include <optional>
+#include <utility>
 
 #include "util/overloaded.hpp"
 
@@ -11,6 +13,10 @@
 namespace params {
 
     // TODO: validation of parameers (reasonable ranges, how they are set relative to each other, etc)
+
+Parameters::Parameters()
+    : forward_delete_log(std::nullopt)
+    {}
 
 
 void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) {
@@ -47,8 +53,8 @@ void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) 
 }
 
 void Parameters::set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value) {
-    if (std::strncmp(key, "log_speed", sizeof("log_speed")) == 0) {
-        this->log_speed = value;
+    if (std::strncmp(key, "log_inter", sizeof("log_inter")) == 0) {
+        this->log_inter = value;
     }
 }
 
@@ -57,6 +63,7 @@ void Parameters::set_parameter_bool(const char key[KEY_CHAR_COUNT], bool value) 
         this->bypass = value;
     } else if (std::strncmp(key, "delete_log", sizeof("delete_log")) == 0) {
         this->delete_log = value;
+        this->forward_delete_log = std::optional<bool>(value);
     }
 }
 
@@ -76,6 +83,10 @@ void Parameters::set_parameter(const msg::Message& msg) {
         msg
     );   
 
+}
+
+std::optional<bool> Parameters::try_consume_forward_delete_log() {
+    return std::exchange(this->forward_delete_log, std::nullopt);
 }
 
 } // namespace params

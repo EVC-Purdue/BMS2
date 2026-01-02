@@ -11,7 +11,13 @@ namespace hardware {
 constexpr int MAX_SPI_TRANSFER_SZ = 4096;
 constexpr uint8_t SPI_MODE = 0;
 constexpr int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
+
 constexpr uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
+
+constexpr const char* SPIFFS_BASE_PATH = "/spiffs";
+constexpr uint32_t SPIFFS_MAX_FILES = 5;
+constexpr bool SPIFFS_FORMAT_IF_MOUNT_FAILED = true;
+
 
 // Sets up GPIO pins as outputs
 void configure_gpio_output();
@@ -22,7 +28,10 @@ void configure_spi(spi_device_handle_t* spi_handle);
 // Configure LEDC (buzzer) peripheral
 void configure_ledc();
 
-// Calls all other configure functions
+// Configure SPIFFs
+void configure_spiffs();
+
+// Calls all other configure functions (GPIO, SPI, LEDC, SPIFFS)
 void configure(spi_device_handle_t* spi_handle);
 
 // Set the initial states of output pins

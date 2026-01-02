@@ -21,6 +21,9 @@ constexpr BaseType_t TASK_CORE_ID = 1;
 constexpr const char* TASK_NAME = "BatteryTask";
 
 
+static_assert(TASK_PERIOD_MS != 0, "TASK_PERIOD_MS must be non-zero, as it is used as a divisor");
+
+
 class TBattery : public task_base::TaskBase {
 	private:
 		modes::Mode mode;
@@ -29,10 +32,14 @@ class TBattery : public task_base::TaskBase {
 		params::Parameters parameters;
 		
 		faults::FaultManager fault_manager;
+        bool new_faults;
 
         bool any_bypassed; // Whether any cell was bypassed when bypass (noise) mode was active
 
-		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults.
+        size_t iters_without_log; // Number of iterations since last log write
+
+		// Check all battery parameters and set faults accordingly. Also updates previous_set_faults
+        // and sets new_faults flag.
 		void check_and_set_faults();
 
 	public:
