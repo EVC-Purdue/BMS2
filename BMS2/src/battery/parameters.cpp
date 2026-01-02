@@ -53,8 +53,8 @@ void Parameters::set_parameter_f32(const char key[KEY_CHAR_COUNT], float value) 
 }
 
 void Parameters::set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value) {
-    if (std::strncmp(key, "log_speed", sizeof("log_speed")) == 0) {
-        this->log_speed = value;
+    if (std::strncmp(key, "log_inter", sizeof("log_inter")) == 0) {
+        this->log_inter = value;
     }
 }
 
