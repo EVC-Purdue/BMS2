@@ -76,7 +76,6 @@ void TLogger::task() {
         std::visit(util::OverloadedVisit {
             [this](const q_logger::msg::LogLine& log_line) {
                 // Safety: assume log line fits in buffer
-                // TODO: make sure no null bytes are written
                 int written = std::snprintf(
                     this->log_line_buffer,
                     LOG_LINE_MAX_SIZE,
