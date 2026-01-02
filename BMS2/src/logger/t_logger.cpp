@@ -56,9 +56,12 @@ void TLogger::write_buffer_to_spiffs() {
 
     // Write buffer to file
     int written = std::fprintf(file, "%.*s", static_cast<int>(this->write_buffer_index), this->write_buffer);
-    UTIL_CHECK_ERR(written == static_cast<int>(this->write_buffer_index));
+    bool write_success = (written == static_cast<int>(this->write_buffer_index));
 
+    // Close file before checking success
     std::fclose(file);
+    UTIL_CHECK_ERR(write_success);
+
     this->write_buffer_index = 0; // Reset buffer index after writing
 }
 
