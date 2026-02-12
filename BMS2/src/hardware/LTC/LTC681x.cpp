@@ -40,12 +40,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Copyright 2017 Linear Technology Corp. (LTC)
 ***********************************************************/
 #include <stdint.h>
-#include "LTC681x.h"
-#include "bms_hardware.h"
+#include "hardware/LTC/LTC681x.h"
+#include "hardware/hardware.hpp"
+#include "hardware/gpio.hpp"
+#include "hardware/spi.hpp"
 
 
 #ifdef LINDUINO
-#include <Arduino.h>
+// #include <Arduino.h>
+#include "hardware/gpio.hpp"
 #endif
 
 
@@ -53,10 +56,10 @@ void wakeup_idle(uint8_t total_ic)
 {
   for (int i =0; i<total_ic; i++)
   {
-    cs_low(CS_PIN);
+    OUTPUT_LOW(CS_PIN);
     //delayMicroseconds(2); //Guarantees the isoSPI will be in ready mode
-    spi_read_byte(0xff);
-    cs_high(CS_PIN);
+    spi::spi_read_byte(0xff);
+    OUTPUT_HIGH(CS_PIN);
   }
 }
 
@@ -65,10 +68,10 @@ void wakeup_sleep(uint8_t total_ic)
 {
   for (int i =0; i<total_ic; i++)
   {
-    cs_low(CS_PIN);
-    delay_u(300); // Guarantees the LTC6813 will be in standby
-    cs_high(CS_PIN);
-    delay_u(10);
+    OUTPUT_LOW(CS_PIN);
+    spi::delay_u(300); // Guarantees the LTC6813 will be in standby
+    OUTPUT_HIGH(CS_PIN);
+    spi::delay_u(10);
   }
 }
 
@@ -84,9 +87,9 @@ void cmd_68(uint8_t tx_cmd[2])
   cmd_pec = pec15_calc(2, cmd);
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
-  cs_low(CS_PIN);
-  spi_write_array(4,cmd);
-  cs_high(CS_PIN);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_array(4,cmd);
+  OUTPUT_HIGH(CS_PIN);
 }
 
 //Generic function to write 68xx commands and write payload data. Function calculated PEC for tx_cmd data
@@ -124,9 +127,9 @@ void write_68(uint8_t total_ic , uint8_t tx_cmd[2], uint8_t data[])
   }
 
 
-  cs_low(CS_PIN);
-  spi_write_array(CMD_LEN, cmd);
-  cs_high(CS_PIN);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_array(CMD_LEN, cmd);
+  OUTPUT_HIGH(CS_PIN);
   free(cmd);
 }
 
@@ -150,9 +153,9 @@ int8_t read_68( uint8_t total_ic, uint8_t tx_cmd[2], uint8_t *rx_data)
   cmd[3] = (uint8_t)(cmd_pec);
 
 
-  cs_low(CS_PIN);
-  spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Read the configuration data of all ICs on the daisy chain into
-  cs_high(CS_PIN);                          //rx_data[] array
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Read the configuration data of all ICs on the daisy chain into
+  OUTPUT_HIGH(CS_PIN);                          //rx_data[] array
 
   for (uint8_t current_ic = 0; current_ic < total_ic; current_ic++)       //executes for each LTC681x in the daisy chain and packs the data
   {
@@ -191,7 +194,7 @@ uint16_t pec15_calc(uint8_t len, //Number of bytes that will be used to calculat
 #ifdef MBED
     remainder = (remainder<<8)^crc15Table[addr];
 #else
-    remainder = (remainder<<8)^pgm_read_word_near(crc15Table+addr);
+    remainder = (remainder<<8)^crc15Table[addr];
 #endif
   }
   return(remainder*2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
@@ -242,7 +245,7 @@ void LTC681x_adcvax(
   md_bits = (MD & 0x02) >> 1;
   cmd[0] = md_bits | 0x04;
   md_bits = (MD & 0x01) << 7;
-  cmd[1] =  md_bits | ((DCP&0x01)<<4) + 0x6F;
+  cmd[1] =  md_bits | (((DCP&0x01)<<4) + 0x6F);
   cmd_68(cmd);
 }
 
@@ -326,11 +329,11 @@ uint8_t LTC681x_pladc()
   cmd[3] = (uint8_t)(cmd_pec);
 
 
-  cs_low(CS_PIN);
-  spi_write_array(4,cmd);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_array(4,cmd);
 // adc_state = spi_read_byte(0xFF);
 
-  cs_high(CS_PIN);
+  OUTPUT_HIGH(CS_PIN);
   return(adc_state);
 }
 
@@ -350,12 +353,12 @@ uint32_t LTC681x_pollAdc()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  cs_low(CS_PIN);
-  spi_write_array(4,cmd);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_array(4,cmd);
 
   while ((counter<200000)&&(finished == 0))
   {
-    current_time = spi_read_byte(0xff);
+    current_time = spi::spi_read_byte(0xff);
     if (current_time>0)
     {
       finished = 1;
@@ -366,7 +369,7 @@ uint32_t LTC681x_pollAdc()
     }
   }
 
-  cs_high(CS_PIN);
+  OUTPUT_HIGH(CS_PIN);
 
 
   return(counter);
@@ -500,9 +503,9 @@ void LTC681x_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  cs_low(CS_PIN);
-  spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-  cs_high(CS_PIN);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+  OUTPUT_HIGH(CS_PIN);
 
 }
 
@@ -592,9 +595,9 @@ void LTC681x_rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is 
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  cs_low(CS_PIN);
-  spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-  cs_high(CS_PIN);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+  OUTPUT_HIGH(CS_PIN);
 
 }
 
@@ -634,9 +637,9 @@ void LTC681x_rdstat_reg(uint8_t reg, //Determines which stat register is read ba
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  cs_low(CS_PIN);
-  spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-  cs_high(CS_PIN);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+  OUTPUT_HIGH(CS_PIN);
 
 }
 
@@ -930,7 +933,9 @@ int8_t LTC681x_rdstat(uint8_t reg, //Determines which Stat  register is read bac
       }
       else if (reg == 2)
       {
-        parsed_stat = data[data_counter++] + (data[data_counter++]<<8);              //Each gpio codes is received as two bytes and is combined to
+        uint8_t lo = data[data_counter++];
+        uint8_t hi = data[data_counter++];
+        parsed_stat = lo + (hi << 8);            //Each gpio codes is received as two bytes and is combined to
         ic[c_ic].stat.stat_codes[3] = parsed_stat;
         ic[c_ic].stat.flags[0] = data[data_counter++];
         ic[c_ic].stat.flags[1] = data[data_counter++];
@@ -1172,7 +1177,7 @@ int16_t LTC681x_run_cell_adc_st(uint8_t adc_reg,uint8_t total_ic, cell_asic ic[]
         LTC681x_clraux();
         LTC681x_axst(2,self_test);
         LTC681x_pollAdc();
-        delay_m(10);
+        spi::delay_m(10);
         wakeup_idle(total_ic);
         LTC681x_rdaux(0, total_ic,ic);
         for (int cic = 0; cic < total_ic; cic++)
@@ -1616,13 +1621,13 @@ void LTC681x_stcomm()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  cs_low(CS_PIN);
-  spi_write_array(4,cmd);
+  OUTPUT_LOW(CS_PIN);
+  spi::spi_write_array(4,cmd);
   for (int i = 0; i<9; i++)
   {
-    spi_read_byte(0xFF);
+    spi::spi_read_byte(0xFF);
   }
-  cs_high(CS_PIN);
+  OUTPUT_HIGH(CS_PIN);
 
 }
 

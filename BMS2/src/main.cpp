@@ -20,7 +20,6 @@ static t_logger::TLogger gs_t_logger(t_logger::TASK_PERIOD_MS);
 static StaticTask_t gs_battery_tcb = {};
 static StaticTask_t gs_logger_tcb = {};
 
-
 // Task stacks
 static StackType_t gs_battery_stack[t_battery::TASK_STACK_SIZE];
 static StackType_t gs_logger_stack[t_logger::TASK_STACK_SIZE];
@@ -28,9 +27,8 @@ static StackType_t gs_logger_stack[t_logger::TASK_STACK_SIZE];
 // Hardware peripherals
 static spi_device_handle_t gs_spi_handle = nullptr;
 
-
-
-extern "C" void app_main() {
+extern "C" void app_main()
+{
     // Hardware configuration and setup
     hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
@@ -42,7 +40,6 @@ extern "C" void app_main() {
     q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
     UTIL_CHECK_REQUIRE(q_logger::g_logger_queue != nullptr);
 
-
     // Start tasks
     TaskHandle_t battery_task_handle = xTaskCreateStaticPinnedToCore(
         &t_battery::TBattery::taskWrapper,
@@ -52,8 +49,7 @@ extern "C" void app_main() {
         t_battery::TASK_PRIORITY,
         gs_battery_stack,
         &gs_battery_tcb,
-        t_battery::TASK_CORE_ID
-    );
+        t_battery::TASK_CORE_ID);
 
     UTIL_CHECK_REQUIRE(battery_task_handle != nullptr);
     TaskHandle_t logger_task_handle = xTaskCreateStaticPinnedToCore(
@@ -64,7 +60,6 @@ extern "C" void app_main() {
         t_logger::TASK_PRIORITY,
         gs_logger_stack,
         &gs_logger_tcb,
-        t_logger::TASK_CORE_ID
-    );
+        t_logger::TASK_CORE_ID);
     UTIL_CHECK_REQUIRE(logger_task_handle != nullptr);
 }

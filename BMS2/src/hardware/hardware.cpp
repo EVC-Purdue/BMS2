@@ -6,7 +6,7 @@
 #include "esp_err.h"
 
 #include "hardware/pins.hpp"
-
+#include "hardware/spi.hpp"
 #include "hardware/hardware.hpp"
 
 namespace hardware {
@@ -55,6 +55,7 @@ void configure_spi(spi_device_handle_t* spi_handle) {
     devcfg.spics_io_num = -1;
     devcfg.queue_size = 1;
     ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, spi_handle));
+    spi::saveHandle(*spi_handle);
 }
 
 void configure_ledc() {
