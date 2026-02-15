@@ -36,7 +36,7 @@ namespace spi
     void delay_u(uint16_t micro)
     {
         // TODO: BLOCKING DELAY
-        esp_rom_delay_us(micro);
+        delay_m(micro / 1000U);
     }
 
     void delay_m(uint16_t milli)

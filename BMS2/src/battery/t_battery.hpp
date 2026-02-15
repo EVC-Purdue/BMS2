@@ -10,6 +10,7 @@
 #include "battery/faults.hpp"
 #include "battery/modes.hpp"
 #include "battery/battery.hpp"
+#include "hardware/LTC/LTC681x.h"
 
 
 namespace t_battery {
@@ -28,6 +29,7 @@ class TBattery : public task_base::TaskBase {
     private:
         modes::Mode mode;
         battery::BatteryData battery_data;
+        cell_asic bms_ic[battery::IC_COUNT];
 
         params::Parameters parameters;
         
@@ -41,6 +43,9 @@ class TBattery : public task_base::TaskBase {
         // Check all battery parameters and set faults accordingly. Also updates previous_set_faults
         // and sets new_faults flag.
         void check_and_set_faults();
+
+        void readBattery();
+
 
     public:
         TBattery(uint32_t period);

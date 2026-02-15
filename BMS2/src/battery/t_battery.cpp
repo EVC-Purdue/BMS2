@@ -1,11 +1,9 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
-
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
-
 #include "battery/q_battery.hpp"
 #include "battery/faults.hpp"
 #include "battery/parameters.hpp"
@@ -14,9 +12,8 @@
 #include "hardware/pins.hpp"
 #include "util/overloaded.hpp"
 #include "util/cmp.hpp"
-
-
 #include "battery/t_battery.hpp"
+#include "hardware/LTC/LTC6811.h"
 
 
 
@@ -107,6 +104,9 @@ void TBattery::task() {
 
     this->check_and_set_faults();
 
+    // TODO: mode check and time check
+    readBattery();
+
     // Handle operations based on the current mode
     // switch (this->mode) {
     //     case modes::Mode::IDLE:
@@ -141,6 +141,73 @@ void TBattery::task() {
     } else {
         this->iters_without_log++;
     }
+}
+
+
+// ============== Battery reading and measurement functions ============== //
+
+void TBattery::readBattery() {
+    int TOTAL_IC = battery::IC_COUNT;
+	wakeup_sleep(TOTAL_IC);
+	clear_discharge(TOTAL_IC, bms_ic);
+
+	// turn off bypass
+	for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
+		bool gpio[5] = {1, 1, 1, 1, 1};
+		LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
+	}
+
+	LTC6811_wrcfg(TOTAL_IC, bms_ic);
+    vTaskDelay(pdMS_TO_TICKS(100));  // allow the filters to settle
+
+    // Read from the battery management ICs and store in bms_ic
+	int8_t error = 0;
+    wakeup_idle(battery::IC_COUNT);
+    LTC6811_adcv(2, 0, 0);
+    LTC6811_pollAdc();
+    wakeup_idle(battery::IC_COUNT);
+    error = LTC6811_rdcv(0, battery::IC_COUNT, bms_ic);
+    if (unlikely(error)) {
+        // Handle error (e.g., log it, set fault flags, etc.)
+        printf("A PEC error was detected in the received data");
+    }
+
+
+	any_bypassed = false;
+	// check if any are going to end up being bypassed before we start updating values
+	if (parameters.bypass) {
+		for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
+			for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++) {
+				if (bms_ic[current_ic].cells.c_codes[i] * 0.0001 >= parameters.v_bypass) {
+					any_bypassed = true;
+					break;
+				}
+			}
+		}
+	}
+
+	if (unlikely(any_bypassed)) {
+		return;
+	}
+
+	battery_data.min_voltage = bms_ic[0].cells.c_codes[0];
+	battery_data.max_voltage = bms_ic[0].cells.c_codes[0];
+	battery_data.sum_voltage = 0;
+
+	for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
+		for (int cell_num = 0; cell_num < bms_ic[0].ic_reg.cell_channels; cell_num++) {
+			battery_data.sum_voltage += bms_ic[current_ic].cells.c_codes[cell_num];
+			
+			if (bms_ic[current_ic].cells.c_codes[cell_num] < battery_data.min_voltage) {
+				battery_data.min_voltage = bms_ic[current_ic].cells.c_codes[cell_num];
+			}
+			
+			if (bms_ic[current_ic].cells.c_codes[cell_num] > battery_data.max_voltage) {
+				battery_data.max_voltage = bms_ic[current_ic].cells.c_codes[cell_num];
+			}
+		}
+	}
+	battery_data.avg_voltage = battery_data.sum_voltage / (TOTAL_IC * bms_ic[0].ic_reg.cell_channels);
 }
 
 
