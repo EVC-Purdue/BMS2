@@ -14,7 +14,10 @@
 #include "util/cmp.hpp"
 #include "battery/t_battery.hpp"
 #include "hardware/LTC/LTC6811.h"
+#include "battery/modes.hpp"
 
+
+// TODO: RunCommand function
 
 
 namespace t_battery {
@@ -104,8 +107,45 @@ void TBattery::task() {
 
     this->check_and_set_faults();
 
-    // TODO: mode check and time check
-    readBattery();
+    uint64_t loopTime;
+	if (mode == modes::Mode::MONITORING || 
+        mode == modes::Mode::IDLE) { loopTime = MEASUREMENT_LOOP_TIME; }
+
+	else if (mode == modes::Mode::BALANCING)              { loopTime = BALANCE_LOOP_TIME; }
+	loopTime *= 1000; // Adjust for micro to milliseconds
+
+	uint64_t currentTime = esp_timer_get_time();
+	if (currentTime - lastStateTime > loopTime) {
+		lastStateTime = currentTime; 
+		switch (mode) {
+			case modes::Mode::MONITORING:
+				readTempatures();
+				readBattery();
+
+				if (currentTime - lastSaveTime > parameters.logSpeed) {
+					lastSaveTime = currentTime;
+					saveEventCounter++;
+				}
+				break;
+			case modes::Mode::BALANCING:
+				readTempatures();
+				readBattery();
+				balanceCells();
+				break;
+			case modes::Mode::IDLE:
+				readTempatures();
+				readBattery();
+				break;
+		}
+
+		if ((mode == modes::Mode::MONITORING || mode == modes::Mode::IDLE) && checkBatteryProblems()) {
+			digitalWrite(CONTACTOR_GPIO, LOW);
+			if (mode == modes::Mode::MONITORING){
+        		saveEventCounter++;
+      		}
+			//buzzOn = true;
+		}
+	}
 
     // Handle operations based on the current mode
     // switch (this->mode) {
@@ -210,5 +250,164 @@ void TBattery::readBattery() {
 	battery_data.avg_voltage = battery_data.sum_voltage / (TOTAL_IC * bms_ic[0].ic_reg.cell_channels);
 }
 
+void balanceCells() {
+	clear_discharge(TOTAL_IC, bms_ic);
+
+	for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
+		battery.pack[current_ic].discharge = 0;
+
+		int sortedCells[12];
+		for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++) {
+			sortedCells[i] = i;
+		}
+
+		packToSort = &battery.pack[current_ic];
+		qsort(sortedCells, bms_ic[0].ic_reg.cell_channels, sizeof(sortedCells[0]), sortDescCompFn);
+
+		Serial.println("Cells largest to smalest: ");
+
+		Serial.print("Cell: ");
+		Serial.println(sortedCells[0] + 1);
+		for (int i = 0; i < bms_ic[0].ic_reg.cell_channels - 1; i++) {
+			Serial.print("Cell: ");
+			Serial.println(sortedCells[i + 1] + 1);
+			
+			if (sortedCells[i] == -1) {
+				continue;
+			}
+
+			for (int cell = i; cell < 12 - 1; cell++) {
+				// if cells are next to each other on the bms remove. no adjectent cells can be balanced at a time
+				if (sortedCells[i] + 1 == sortedCells[cell + 1]) {
+					sortedCells[cell + 1] = -1;
+				}
+
+				if (sortedCells[i] - 1 == sortedCells[cell + 1]) {
+					sortedCells[cell + 1] = -1;
+				}
+			}
+		}
+
+		for (int i = 0, count = 0; count < MAX_BALANCE_COUNT && i < 12; i++) {
+			if (sortedCells[i] != -1 &&
+					(packToSort->cells[sortedCells[i]] > battery.pack[current_ic].average + 0.001 / 0.0001 ||
+					 packToSort->cells[sortedCells[i]] > battery.average + 0.001 / 0.0001)) {  // 0.01 V above average.
+				Serial.print("Discharging: ");
+				Serial.println(12 * current_ic + sortedCells[i] + 1);
+				LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, TOTAL_IC, bms_ic);
+				battery.pack[current_ic].discharge |= 1 << sortedCells[i];
+				count++;
+			}
+		}
+	}
+	wakeup_sleep(TOTAL_IC);
+	LTC6811_wrcfg(TOTAL_IC, bms_ic);
+	printConfig();
+	saveEventCounter++;
+}
+
+void readTempatures() {
+	int error;
+	wakeup_sleep(TOTAL_IC);
+	LTC6811_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
+	LTC6811_pollAdc();
+
+	delay(100);
+	error = LTC6811_rdaux(0, TOTAL_IC, bms_ic);  // Set to read back all aux registers
+	checkError(error);
+	// TODO: delete old thermistor code
+	// for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
+	// 	battery.pack[current_ic].balanceTemp = thermisitorTemp(bms_ic[current_ic].aux.a_codes[GPIO_BALTEMP - 1] * 0.0001);
+	// 	battery.pack[current_ic].bypassTemp = thermisitorTemp(bms_ic[current_ic].aux.a_codes[GPIO_BYPASSTEMP - 1] * 0.0001);
+	// }
+
+	float fetV;
+
+	battery.pack[TEMP_PACK_IDX].therm1Temp = cellTemp(bms_ic[0].aux.a_codes[THERM1_GPIO - 1] * 0.0001);
+	battery.pack[TEMP_PACK_IDX].therm2Temp = cellTemp(bms_ic[0].aux.a_codes[THERM2_GPIO - 1] * 0.0001);
+	battery.pack[TEMP_PACK_IDX].therm3Temp = cellTemp(bms_ic[0].aux.a_codes[THERM3_GPIO - 1] * 0.0001);
+	fetV = bms_ic[0].aux.a_codes[THERM_FET_GPIO - 1] * 0.0001;
+	battery.pack[TEMP_PACK_IDX].thermFETTemp = steinhart((fetV * 10000) / (3 - fetV));
+	battery.current = convertCurrent(bms_ic[0].aux.a_codes[CURRENT_GPIO - 1] * 0.0001);
+}
+
+bool checkBatteryProblems() {
+	// return (battery.min.voltage * 0.0001 < parameters.vMin) ||
+	// 	(battery.max.voltage * 0.0001 > parameters.vMax) ||
+	// 	   (battery.average     * 0.0001 < parameters.vMinAvg) ||
+	// 	   (battery.average     * 0.0001 > parameters.vMaxAvg) ||
+	// 	   (battery.max.voltage * 0.0001 - battery.min.voltage * 0.0001 > 0.2) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm1Temp   > parameters.tMax) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm2Temp   > parameters.tMax) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm3Temp   > parameters.tMax) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].thermFETTemp > parameters.tMax) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm1Temp   < parameters.tMin) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm2Temp   < parameters.tMin) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].therm3Temp   < parameters.tMin) ||
+	// 	   (battery.pack[TEMP_PACK_IDX].thermFETTemp < parameters.tMin) ||
+	// 	   (battery.current > MAX_CHARGE_CURRENT);
+
+	// TODO_COUNT++;
+
+	// Serial.println("battery.min.voltage, parameters.vMin");
+	// Serial.println(battery.min.voltage * 0.0001);
+	// Serial.println(parameters.vMin);
+
+	// Serial.println("battery.max.voltage, parameters.vMax");
+	// Serial.println(battery.max.voltage * 0.0001);
+	// Serial.println(parameters.vMax);
+
+	// Serial.println("battery.average, parameters.vMinAvg");
+	// Serial.println(battery.average * 0.0001);
+	// Serial.println(parameters.vMinAvg);
+
+	// Serial.println("battery.average, parameters.vMaxAvg");
+	// Serial.println(battery.average * 0.0001);
+	// Serial.println(parameters.vMaxAvg);
+
+	// Serial.println("battery.max.voltage, battery.min.voltage, parameters.vDiff");
+	// Serial.println(battery.max.voltage * 0.0001);
+	// Serial.println(battery.min.voltage * 0.0001);
+	// Serial.println(parameters.vDiff);
+
+	// Serial.println("battery.pack[TEMP_PACK_IDX].therm1Temp, parameters.tMin, parameters.tMax");
+	// Serial.println(battery.pack[TEMP_PACK_IDX].therm1Temp);
+	// Serial.println(parameters.tMin);
+	// Serial.println(parameters.tMax);
+
+	// Serial.println("battery.pack[TEMP_PACK_IDX].therm2Temp, parameters.tMin, parameters.tMax");
+	// Serial.println(battery.pack[TEMP_PACK_IDX].therm2Temp);
+	// Serial.println(parameters.tMin);
+	// Serial.println(parameters.tMax);
+
+	// Serial.println("battery.pack[TEMP_PACK_IDX].therm3Temp, parameters.tMin, parameters.tMax");
+	// Serial.println(battery.pack[TEMP_PACK_IDX].therm3Temp);
+	// Serial.println(parameters.tMin);
+	// Serial.println(parameters.tMax);
+
+	// Serial.println("battery.current, MAX_CHARGE_CURRENT");
+	// Serial.println(battery.current);
+	// Serial.println(MAX_CHARGE_CURRENT);
+
+
+	// Serial.println("\nSTARTING TO CHECK BATTERY PROBLEMS");
+
+	checkTemperatureDifferences();
+
+	// Serial.println("CHECKED TEMPERATURE DIFFERENCES! (SUCCESS): diff triggered: ");
+	// Serial.println(battery.tDiffTriggered);
+
+	// Serial.println("battery.tDiffTriggered");
+	// Serial.println(battery.tDiffTriggered);
+
+	return (battery.min.voltage * 0.0001 < parameters.vMin) ||
+		   (battery.max.voltage * 0.0001 > parameters.vMax) ||
+		   (!checkVoltageWithin(battery.average, parameters.vMinAvg, parameters.vMaxAvg)) ||
+		   (!checkDiff(battery.max.voltage * 0.0001, battery.min.voltage * 0.0001, parameters.vDiff)) ||
+		   (!checkWithin(battery.pack[TEMP_PACK_IDX].therm1Temp, parameters.tMin, parameters.tMax)) ||
+		   (!checkWithin(battery.pack[TEMP_PACK_IDX].therm2Temp, parameters.tMin, parameters.tMax)) ||
+		   (!checkWithin(battery.pack[TEMP_PACK_IDX].therm3Temp, parameters.tMin, parameters.tMax)) ||
+		   (battery.current < MAX_CHARGE_CURRENT) || (battery.current > MAX_DISCHARGE_CURRENT);
+}
 
 } // namespace t_battery

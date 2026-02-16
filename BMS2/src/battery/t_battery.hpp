@@ -21,6 +21,15 @@ constexpr UBaseType_t TASK_PRIORITY = 10;
 constexpr BaseType_t TASK_CORE_ID = 1;
 constexpr const char* TASK_NAME = "BatteryTask";
 
+// Params
+const uint64_t MEASUREMENT_LOOP_TIME = 100;		// milliseconds(mS)
+const uint64_t BALANCE_LOOP_TIME = 10000;		// milliseconds(mS)
+const uint64_t POLL_TIME = 1500;  				// milliseconds(mS)
+
+uint64_t lastSaveTime;
+uint64_t lastPollTime;
+uint64_t lastStateTime;
+
 
 static_assert(TASK_PERIOD_MS != 0, "TASK_PERIOD_MS must be non-zero, as it is used as a divisor");
 
@@ -45,6 +54,9 @@ class TBattery : public task_base::TaskBase {
         void check_and_set_faults();
 
         void readBattery();
+        void balanceCells();
+        void readTempatures();
+        bool checkBatteryProblems();
 
 
     public:
