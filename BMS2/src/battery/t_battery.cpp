@@ -308,18 +308,13 @@ void balanceCells() {
 
 void readTempatures() {
 	int error;
-	wakeup_sleep(TOTAL_IC);
+	wakeup_sleep(battery::IC_COUNT);
 	LTC6811_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
 	LTC6811_pollAdc();
 
-	delay(100);
-	error = LTC6811_rdaux(0, TOTAL_IC, bms_ic);  // Set to read back all aux registers
+	vTaskDelay(pdMS_TO_TICKS(100));
+	error = LTC6811_rdaux(0, battery::IC_COUNT, bms_ic);  // Set to read back all aux registers
 	checkError(error);
-	// TODO: delete old thermistor code
-	// for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
-	// 	battery.pack[current_ic].balanceTemp = thermisitorTemp(bms_ic[current_ic].aux.a_codes[GPIO_BALTEMP - 1] * 0.0001);
-	// 	battery.pack[current_ic].bypassTemp = thermisitorTemp(bms_ic[current_ic].aux.a_codes[GPIO_BYPASSTEMP - 1] * 0.0001);
-	// }
 
 	float fetV;
 
