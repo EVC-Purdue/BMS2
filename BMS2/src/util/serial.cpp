@@ -31,8 +31,21 @@ void println(const char* str) {
     Serial.println(str);
 }
 
+void printf(const char* format, ...) {
+	char buffer[128]; // Adjust size as needed
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	Serial.println(buffer);
+}
+
 void print(const char* str) {
     Serial.print(str);
+}
+
+void print(int data, int base) {
+	Serial.print(data, base);
 }
 
 }
