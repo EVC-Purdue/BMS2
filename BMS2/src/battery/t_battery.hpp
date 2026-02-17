@@ -71,6 +71,11 @@ class TBattery : public task_base::TaskBase {
         void balanceCells();
         void readTempatures();
         bool checkBatteryProblems();
+        float cellTemp(float voltage);
+        float steinhart(float R);
+        float convertCurrent(float voltage);
+        void setAmplifierGain();
+        void adjustGain(float voltage);
 
         int sortDescCompFn(const void *cmp1, const void *cmp2);
         void printConfig();

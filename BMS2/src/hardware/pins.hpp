@@ -6,20 +6,20 @@
 
 namespace pins {
     namespace LTC1 { // TOP
-        constexpr size_t THERM1 = 2;
-        constexpr size_t THERM2 = 3;
+        constexpr size_t THERM1 = 3;
+        constexpr size_t THERM2 = 2;
         constexpr size_t THERM3 = 4;
         constexpr size_t THERM4 = 5;
-        constexpr size_t THERM_FET = 1;
+        
         constexpr size_t THERM_BAL_BOT = 2;
         constexpr size_t THERM_BAL_TOP = 3;
         constexpr size_t CURRENT = 1;
     } // namespace LTC1
 
     namespace LTC2 { // BOTTOM
+        constexpr size_t THERM_FET = 1;
         constexpr size_t THERM_BAL_BOT = 2;
         constexpr size_t THERM_BAL_TOP = 3;
-        constexpr size_t CURRENT = 1;
     } // namespace LTC2
 
     namespace ESP {

@@ -19,11 +19,14 @@
 #include "logger/t_logger.hpp"
 #include "battery/battery.hpp"
 #include "util/serial.hpp"
+#include "hardware/pins.hpp"
+#include "math.h"
 
 // TODO: RunCommand function
 
 
 namespace t_battery {
+int gain_set = 3;
 
 TBattery::TBattery(uint32_t period)
     : task_base::TaskBase(period),
@@ -324,23 +327,109 @@ void TBattery::balanceCells() {
 }
 
 void TBattery::readTempatures() {
-	int error;
-	wakeup_sleep(battery::IC_COUNT);
+	wakeup_idle(battery::IC_COUNT);
 	LTC6811_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
 	LTC6811_pollAdc();
+	wakeup_idle(battery::IC_COUNT);
+	//vtaskDelay(pdMS_TO_TICKS(100));
+	int error = LTC6811_rdaux(0, battery::IC_COUNT, bms_ic);  // Set to read back all aux registers
+	
+	if (unlikely(error)) {
+		printf("A PEC error was detected in the received data in readTemperatures");
+	}
 
-	vTaskDelay(pdMS_TO_TICKS(100));
-	error = LTC6811_rdaux(0, battery::IC_COUNT, bms_ic);  // Set to read back all aux registers
-	checkError(error);
+	battery_data.temps.therms[0] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM1 - 1] * 0.0001);
+	battery_data.temps.therms[1] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM2 - 1] * 0.0001);
+	battery_data.temps.therms[2] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM3 - 1] * 0.0001);
+	battery_data.temps.therms[3] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM4 - 1] * 0.0001);
 
-	float fetV;
+	float fetV = bms_ic[1].aux.a_codes[pins::LTC2::THERM_FET - 1] * 0.0001;
+	float balBotV = bms_ic[1].aux.a_codes[pins::LTC2::THERM_BAL_BOT - 1] * 0.0001;
+	float balTopV = bms_ic[1].aux.a_codes[pins::LTC2::THERM_BAL_TOP - 1] * 0.0001;
 
-	battery.pack[TEMP_PACK_IDX].therm1Temp = cellTemp(bms_ic[0].aux.a_codes[THERM1_GPIO - 1] * 0.0001);
-	battery.pack[TEMP_PACK_IDX].therm2Temp = cellTemp(bms_ic[0].aux.a_codes[THERM2_GPIO - 1] * 0.0001);
-	battery.pack[TEMP_PACK_IDX].therm3Temp = cellTemp(bms_ic[0].aux.a_codes[THERM3_GPIO - 1] * 0.0001);
-	fetV = bms_ic[0].aux.a_codes[THERM_FET_GPIO - 1] * 0.0001;
-	battery.pack[TEMP_PACK_IDX].thermFETTemp = steinhart((fetV * 10000) / (3 - fetV));
-	battery.current = convertCurrent(bms_ic[0].aux.a_codes[CURRENT_GPIO - 1] * 0.0001);
+	battery_data.temps.fet = steinhart((fetV * 10000) / (3 - fetV));
+	battery_data.temps.bal_bot = steinhart((balBotV * 10000) / (3 - balBotV));
+	battery_data.temps.bal_top = steinhart((balTopV * 10000) / (3 - balTopV));
+	
+	battery_data.current = convertCurrent(bms_ic[0].aux.a_codes[pins::LTC1::CURRENT - 1] * 0.0001);
+
+}
+
+float TBattery::convertCurrent(float voltage) {
+	float adjusted_voltage = voltage - CURRENT_REF_OFFSET; // Adjust for error V offset
+	float current = adjusted_voltage / (SHUNT_RESISTANCE * CURRENT_GAIN[gain_set]);
+
+	// Adjust the gain based on the current
+	adjustGain(voltage);
+
+	return current;
+}
+
+void TBattery::setAmplifierGain() {
+	bool gs0;
+	bool gs1;
+		switch(gain_set){
+			case 0:
+				gs0 = LOW;
+				gs1 = LOW;
+				break;
+			case 1:
+				gs0 = LOW;
+				gs1 = HIGH;
+				break;
+			case 2:
+				gs0 = HIGH;
+				gs1 = LOW;
+				break;
+			case 3:
+				gs0 = HIGH;
+				gs1 = HIGH;
+			default:
+				gs0 = HIGH;
+				gs1 = HIGH;
+				gain_set = 3;
+				break;
+		}
+		digitalWrite(GS0_GPIO, gs0);
+		digitalWrite(GS1_GPIO, gs1);
+
+		return;
+}
+
+void TBattery::adjustGain(float voltage) {
+	if (voltage < .2 || voltage > 2.8) {
+		if(gain_set > 0){
+			gain_set -= 1;
+			setAmplifierGain();
+		}
+	}
+	else if (fabs(voltage - CURRENT_REF_OFFSET) < 0.1) {
+		if (gain_set < 3){
+			gain_set += 1;
+			setAmplifierGain();
+		}
+	}
+
+}
+
+float TBattery::steinhart(float R){ // simplified Steinhart approximation with B = 3950
+
+	float tempC;
+
+	tempC = .003354 + (.000253165 * log(R / 10000));
+	tempC = (1 / tempC) - 273.15;
+
+	return tempC;
+}
+
+float TBattery::cellTemp(float voltage) {
+	float Vin;
+	float R;
+
+	Vin = (0.614144 + voltage) / 1.359314; // other side of opamp
+	R = (3.3 - Vin) * 4640 / Vin; // thermistor resistance
+
+	return steinhart(R);
 }
 
 bool TBattery::checkBatteryProblems() {
