@@ -26,6 +26,8 @@ constexpr size_t SPIFFS_RECHECK_USAGE_WRITES_COUNT = 20; // Number of writes aft
 constexpr size_t WRITE_BUFFER_SIZE = 512; // Size of buffer for writing log lines
 constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line. This MUST be big enough to hold one full log line.
 
+int saveEventCounter = 0; // TODO: On change will trigger a log save in TLogger.
+
 
 
 class TLogger : public task_base::TaskBase {
