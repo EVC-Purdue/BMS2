@@ -73,6 +73,7 @@ class TBattery : public task_base::TaskBase {
         bool checkBatteryProblems();
 
         int sortDescCompFn(const void *cmp1, const void *cmp2);
+        void printConfig();
 
 
     public:

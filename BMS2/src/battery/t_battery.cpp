@@ -321,6 +321,7 @@ void TBattery::balanceCells() {
 	LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
 	printConfig();
 }
+}
 
 void TBattery::readTempatures() {
 	int error;
@@ -365,7 +366,7 @@ int TBattery::sortDescCompFn(const void *cmp1, const void *cmp2) {
 	return a > b ? -1 : (a < b ? 1 : 0);
 }
 
-void printConfig() {
+void TBattery::printConfig() {
 	int cfg_pec;
 
 	Serial::println("Written Configuration: ");
