@@ -284,11 +284,11 @@ void TBattery::balanceCells() {
 		        return val_a > val_b;  // descending order
 		    });
 
-		printf("Cells largest to smalest: ");
+		Serial::printf("Cells largest to smalest: ");
 
-		printf("Cell: %d\n", sortedCells[0] + 1);
+		Serial::printf("Cell: %d\n", sortedCells[0] + 1);
 		for (int i = 0; i < bms_ic[0].ic_reg.cell_channels - 1; i++) {
-			printf("Cell: %d\n", sortedCells[i + 1] + 1);
+			Serial::printf("Cell: %d\n", sortedCells[i + 1] + 1);
 			
 			if (sortedCells[i] == -1) {
 				continue;
@@ -310,7 +310,7 @@ void TBattery::balanceCells() {
 			if (sortedCells[i] != -1 &&
 					(packToSort->cell_voltages[sortedCells[i]] > battery_data.ics[current_ic].avg_voltage + 0.001 / 0.0001 ||
 					 packToSort->cell_voltages[sortedCells[i]] > battery_data.avg_voltage + 0.001 / 0.0001)) {  // 0.01 V above average.
-				printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
+				Serial::printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
 				LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, battery::IC_COUNT, bms_ic);
 				for (int j = 0; j < battery::CELL_COUNT_PER_IC; j++) {
 					battery_data.ics[current_ic].discharge[j] = 
@@ -480,8 +480,8 @@ void TBattery::printConfig() {
 		Serial::printHex((uint8_t)(cfg_pec >> 8));
 		Serial::print(", 0x");
 		Serial::printHex((uint8_t)(cfg_pec));
-		Serial::println();
+		Serial::println("");
 	}
-	Serial::println();
+	Serial::println("");
 }
 } // namespace t_battery

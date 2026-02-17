@@ -9,6 +9,8 @@ namespace Serial
     char readHex();
     char getChar();
     void println(const char *str);
+    void printf(const char *format, ...); // TODO: Implement printf
     void print(const char *str);
+    void print(int data, int base);
 }
 #endif // SERIAL_HPP
