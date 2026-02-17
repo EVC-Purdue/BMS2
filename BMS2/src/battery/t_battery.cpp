@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <algorithm>
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
@@ -15,7 +16,8 @@
 #include "battery/t_battery.hpp"
 #include "hardware/LTC/LTC6811.h"
 #include "battery/modes.hpp"
-
+#include "logger/t_logger.hpp"
+#include "battery/battery.hpp"
 
 // TODO: RunCommand function
 
@@ -122,9 +124,9 @@ void TBattery::task() {
 				readTempatures();
 				readBattery();
 
-				if (currentTime - lastSaveTime > parameters.logSpeed) {
+				if (currentTime - lastSaveTime > parameters.log_inter) {
 					lastSaveTime = currentTime;
-					saveEventCounter++;
+					t_logger::saveEventCounter++;
 				}
 				break;
 			case modes::Mode::BALANCING:
@@ -139,26 +141,13 @@ void TBattery::task() {
 		}
 
 		if ((mode == modes::Mode::MONITORING || mode == modes::Mode::IDLE) && checkBatteryProblems()) {
-			digitalWrite(CONTACTOR_GPIO, LOW);
+			OUTPUT_LOW(CONTACTOR_GPIO);
 			if (mode == modes::Mode::MONITORING){
-        		saveEventCounter++;
+        		t_logger::saveEventCounter++;
       		}
 			//buzzOn = true;
 		}
 	}
-
-    // Handle operations based on the current mode
-    // switch (this->mode) {
-    //     case modes::Mode::IDLE:
-    //         // Handle IDLE mode operations
-    //         break;
-    //     case modes::Mode::MONITORING:
-    //         // Handle MONITORING mode operations
-    //         break;
-    //     case modes::Mode::BALANCING:
-    //         // Handle BALANCING mode operations
-    //         break;
-    // }
 
     // integer division will floor the result, which is desired here
     uint32_t log_interval_iters = this->parameters.log_inter / t_battery::TASK_PERIOD_MS;
@@ -250,27 +239,30 @@ void TBattery::readBattery() {
 	battery_data.avg_voltage = battery_data.sum_voltage / (TOTAL_IC * bms_ic[0].ic_reg.cell_channels);
 }
 
-void balanceCells() {
-	clear_discharge(TOTAL_IC, bms_ic);
+void TBattery::balanceCells() {
+	clear_discharge(battery::IC_COUNT, bms_ic);
 
-	for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
-		battery.pack[current_ic].discharge = 0;
+	for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++) {
+		battery_data.ics[current_ic].discharge = 0;
 
 		int sortedCells[12];
 		for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++) {
 			sortedCells[i] = i;
 		}
 
-		packToSort = &battery.pack[current_ic];
-		qsort(sortedCells, bms_ic[0].ic_reg.cell_channels, sizeof(sortedCells[0]), sortDescCompFn);
+		battery::IcData* packToSort = &battery_data.ics[current_ic];
+		std::sort(sortedCells, sortedCells + bms_ic[0].ic_reg.cell_channels,
+		    [packToSort](int a, int b) {
+		        int val_a = packToSort->cell_voltages[a];
+		        int val_b = packToSort->cell_voltages[b];
+		        return val_a > val_b;  // descending order
+		    });
 
-		Serial.println("Cells largest to smalest: ");
+		printf("Cells largest to smalest: ");
 
-		Serial.print("Cell: ");
-		Serial.println(sortedCells[0] + 1);
+		printf("Cell: %d\n", sortedCells[0] + 1);
 		for (int i = 0; i < bms_ic[0].ic_reg.cell_channels - 1; i++) {
-			Serial.print("Cell: ");
-			Serial.println(sortedCells[i + 1] + 1);
+			printf("Cell: %d\n", sortedCells[i + 1] + 1);
 			
 			if (sortedCells[i] == -1) {
 				continue;
@@ -290,23 +282,23 @@ void balanceCells() {
 
 		for (int i = 0, count = 0; count < MAX_BALANCE_COUNT && i < 12; i++) {
 			if (sortedCells[i] != -1 &&
-					(packToSort->cells[sortedCells[i]] > battery.pack[current_ic].average + 0.001 / 0.0001 ||
-					 packToSort->cells[sortedCells[i]] > battery.average + 0.001 / 0.0001)) {  // 0.01 V above average.
-				Serial.print("Discharging: ");
-				Serial.println(12 * current_ic + sortedCells[i] + 1);
-				LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, TOTAL_IC, bms_ic);
-				battery.pack[current_ic].discharge |= 1 << sortedCells[i];
+					(packToSort->cell_voltages[sortedCells[i]] > battery_data.ics[current_ic].avg_voltage + 0.001 / 0.0001 ||
+					 packToSort->cell_voltages[sortedCells[i]] > battery_data.avg_voltage + 0.001 / 0.0001)) {  // 0.01 V above average.
+				printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
+				LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, battery::IC_COUNT, bms_ic);
+				battery_data.ics[current_ic].discharge |= 1 << sortedCells[i];
+				for 
 				count++;
 			}
 		}
 	}
-	wakeup_sleep(TOTAL_IC);
-	LTC6811_wrcfg(TOTAL_IC, bms_ic);
+	wakeup_sleep(battery::IC_COUNT);
+	LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
 	printConfig();
-	saveEventCounter++;
+	t_logger::saveEventCounter++;
 }
 
-void readTempatures() {
+void TBattery::readTempatures() {
 	int error;
 	wakeup_sleep(TOTAL_IC);
 	LTC6811_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
@@ -331,7 +323,7 @@ void readTempatures() {
 	battery.current = convertCurrent(bms_ic[0].aux.a_codes[CURRENT_GPIO - 1] * 0.0001);
 }
 
-bool checkBatteryProblems() {
+bool TBattery::checkBatteryProblems() {
 	// return (battery.min.voltage * 0.0001 < parameters.vMin) ||
 	// 	(battery.max.voltage * 0.0001 > parameters.vMax) ||
 	// 	   (battery.average     * 0.0001 < parameters.vMinAvg) ||
@@ -408,6 +400,16 @@ bool checkBatteryProblems() {
 		   (!checkWithin(battery.pack[TEMP_PACK_IDX].therm2Temp, parameters.tMin, parameters.tMax)) ||
 		   (!checkWithin(battery.pack[TEMP_PACK_IDX].therm3Temp, parameters.tMin, parameters.tMax)) ||
 		   (battery.current < MAX_CHARGE_CURRENT) || (battery.current > MAX_DISCHARGE_CURRENT);
+}
+
+// Util functions
+
+
+int TBattery::sortDescCompFn(const void *cmp1, const void *cmp2) {
+	// Need to cast the void * to int * before dereferencing
+	int a = packToSort->cells[*((int *)cmp1)];
+	int b = packToSort->cells[*((int *)cmp2)];
+	return a > b ? -1 : (a < b ? 1 : 0);
 }
 
 } // namespace t_battery
