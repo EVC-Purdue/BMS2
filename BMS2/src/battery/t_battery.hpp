@@ -33,6 +33,12 @@ const uint8_t CELL_CH_TO_CONVERT = CELL_CH_ALL;    // See LTC6811_daisy.h for Op
 const uint8_t AUX_CH_TO_CONVERT = AUX_CH_ALL;      // See LTC6811_daisy.h for Options
 const uint8_t STAT_CH_TO_CONVERT = STAT_CH_ALL;    // See LTC6811_daisy.h for Options
 
+#define SHUNT_RESISTANCE 0.0001
+#define CURRENT_REF_OFFSET .496
+#define MAX_CHARGE_CURRENT -100
+#define MAX_DISCHARGE_CURRENT 400
+#define MAX_BALANCE_COUNT 5
+
 uint64_t lastSaveTime;
 uint64_t lastPollTime;
 uint64_t lastStateTime;
