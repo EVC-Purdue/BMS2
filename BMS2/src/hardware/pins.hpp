@@ -38,6 +38,8 @@ namespace pins {
         constexpr gpio_num_t SPI_MOSI = GPIO_NUM_34;  // SPI
         constexpr gpio_num_t SPI_CS = GPIO_NUM_32;    // GPIO output, CS is manually set
         constexpr gpio_num_t BUZZER = GPIO_NUM_17;    // LEDC
+        constexpr gpio_num_t GS0_GPIO = GPIO_NUM_47;  // amplifier gain set pins
+        constexpr gpio_num_t GS1_GPIO = GPIO_NUM_48;  // amplifier gain set pins
     } // namespace ESP
 } // namespace pins
 

@@ -22,6 +22,7 @@ constexpr float PARAMETER_T_MAX = 50.0f;       // max temp
 constexpr float PARAMETER_T_DIFF = 30.0f;      // max temp difference
 constexpr float PARAMETER_I_MAX = 150.0f;      // max discharge current
 constexpr float PARAMETER_I_MIN = -50.0f;      // max charge current
+constexpr float PARAMETER_I_MIN_REGEN = -120.0f;// max regen current
 constexpr float PARAMETER_T_MAX_BAL = 50.0f;   // max temp for balancing
 constexpr float PARAMETER_T_RESET_BAL = 40.0f; // reset temp for balancing (once it goes below this we can balance again)
 constexpr uint32_t PARAMETER_LOG_INTER = 1000; // How often to save to log in monitor state (ms). Should be multiple of t_battery::TASK_PERIOD_MS
@@ -75,14 +76,17 @@ class Parameters {
         float v_max_avg = PARAMETER_V_MAX_AVG;
         float v_diff = PARAMETER_V_DIFF;
 
-        float t_min = PARAMETER_T_MIN;
-        float t_max = PARAMETER_T_MAX;
-        float t_diff = PARAMETER_T_DIFF;
+        float t_min = PARAMETER_T_MIN; // min temp
+        float t_max = PARAMETER_T_MAX; // max temp
+        float t_diff = PARAMETER_T_DIFF; // max temp difference
 
-        float i_max = PARAMETER_I_MAX;
-        float i_min = PARAMETER_I_MIN;
+        float i_max = PARAMETER_I_MAX; // max discharge current
+        float i_min = PARAMETER_I_MIN; // max charge current
+        float i_min_regen = PARAMETER_I_MIN_REGEN; // max regen current
 
-        float t_max_bal = PARAMETER_T_MAX_BAL;
+        // max temp for balancing. If either balance temp goes above this, balancing will be disabled until the temp goes back down below t_reset_bal
+        float t_max_bal = PARAMETER_T_MAX_BAL;  
+        // reset temp for balancing.
         float t_reset_bal = PARAMETER_T_RESET_BAL;
 
         uint32_t log_inter = PARAMETER_LOG_INTER;
