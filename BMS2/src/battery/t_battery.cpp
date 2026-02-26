@@ -459,8 +459,8 @@ namespace t_battery
 			gain_set = 3;
 			break;
 		}
-		digitalWrite(pins::ESP::GS0_GPIO, gs0);
-		digitalWrite(pins::ESP::GS1_GPIO, gs1);
+		digitalWrite(pins::ESP::GS0, gs0);
+		digitalWrite(pins::ESP::GS1, gs1);
 
 		return;
 	}

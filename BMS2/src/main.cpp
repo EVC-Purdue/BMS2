@@ -10,6 +10,8 @@
 #include "util/err.hpp"
 #include "esp_littlefs.h"
 #include <unistd.h>
+#include "hardware/pins.hpp"
+#include "hardware/gpio.hpp"
 
 // Tasks
 static t_battery::TBattery gs_t_battery(t_battery::TASK_PERIOD_MS);
@@ -32,13 +34,13 @@ extern "C" void app_main()
     hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
 
+    // Configure and mount LittleFS (file system)
     esp_vfs_littlefs_conf_t conf = {
         .base_path = "/littlefs",
         .partition_label = "littlefs",
         .format_if_mount_failed = true,
         .dont_mount = false,
     };
-
     esp_vfs_littlefs_register(&conf);
 
     // Queue initialization

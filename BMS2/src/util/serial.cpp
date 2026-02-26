@@ -22,15 +22,15 @@ namespace Serial
 			.source_clk = UART_SCLK_DEFAULT,
 		};
 
-		uart_driver_install(Serial::UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
-		uart_param_config(Serial::UART_NUM, &uart_config);
-		uart_set_pin(Serial::UART_NUM, TX_PIN, RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+		uart_driver_install(pins::ESP::UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+		uart_param_config(pins::ESP::UART_NUM, &uart_config);
+		uart_set_pin(pins::ESP::UART_NUM, TX_PIN, RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 	}
 
 	// TODO: Impliment master functions
 	void print(const char *str)
 	{
-		uart_write_bytes(Serial::UART_NUM, str, strlen(str));
+		uart_write_bytes(pins::ESP::UART_NUM, str, strlen(str));
 	}
 
 	//! Blocking read, recommended to use with Serial.available() to prevent blocking when no data is present
@@ -39,14 +39,14 @@ namespace Serial
 		while (available() <= 0)
 			;
 		uint8_t data;
-		uart_read_bytes(Serial::UART_NUM, &data, 1, portMAX_DELAY);
+		uart_read_bytes(pins::ESP::UART_NUM, &data, 1, portMAX_DELAY);
 		return data;
 	}
 
 	bool available()
 	{
 		size_t bytes_available = 0;
-		uart_get_buffered_data_len(Serial::UART_NUM, &bytes_available);
+		uart_get_buffered_data_len(pins::ESP::UART_NUM, &bytes_available);
 		return bytes_available > 0;
 	}
 	// end todo section

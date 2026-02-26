@@ -6,8 +6,6 @@
 
 namespace Serial
 {
-    const uart_port_t UART_NUM = UART_NUM_0; // TODO
-
     bool available();
     
     void setup(int baud_rate);

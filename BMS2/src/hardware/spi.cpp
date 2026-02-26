@@ -8,7 +8,6 @@
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "hardware/gpio.hpp"
 
 namespace spi
