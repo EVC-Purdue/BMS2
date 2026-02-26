@@ -17,6 +17,8 @@
 
 namespace t_logger {
 
+int saveEventCounter = 0;
+
 TLogger::TLogger(uint32_t period)
     : task_base::TaskBase(period),
     param_delete_log_if_full(false),

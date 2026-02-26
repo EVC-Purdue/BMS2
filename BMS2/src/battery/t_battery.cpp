@@ -28,6 +28,9 @@
 namespace t_battery
 {
 	int gain_set = 3;
+	uint64_t lastSaveTime = 0;
+	uint64_t lastPollTime = 0;
+	uint64_t lastStateTime = 0;
 
 	TBattery::TBattery(uint32_t period)
 		: task_base::TaskBase(period),

@@ -136,38 +136,6 @@ namespace t_battery
         Serial::println();
     }
 
-    void TBattery::printConfig()
-    {
-        int cfg_pec;
-
-        Serial::println(F("Written Configuration: "));
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
-        {
-            Serial::print(F(" IC "));
-            Serial::print(current_ic + 1, DEC);
-            Serial::print(F(": "));
-            Serial::print(F("0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[0], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[1], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[2], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[3], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[4], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.tx_data[5], 16);
-            Serial::print(F(", Calculated PEC: 0x"));
-            cfg_pec = pec15_calc(6, &bms_ic[current_ic].config.tx_data[0]);
-            Serial::print((uint8_t)(cfg_pec >> 8), 16);
-            Serial::print(F(", 0x"));
-            Serial::print((uint8_t)(cfg_pec), 16);
-            Serial::println();
-        }
-        Serial::println();
-    }
-
     void TBattery::printRxConfig()
     {
         Serial::println(F("Received Configuration "));
@@ -238,6 +206,24 @@ namespace t_battery
             }
         }
         Serial::println();
+    }
+
+    void TBattery::printMenu()
+    {
+        Serial::println(F("Please enter LTC6811 Command"));
+        Serial::println(F("Write Configuration: 1            | Reset PEC Counter: 11 "));
+        Serial::println(F("Read Configuration: 2             | Run ADC Self Test: 12"));
+        Serial::println(F("Start Cell Voltage Conversion: 3  | Set Discharge: 13"));
+        Serial::println(F("Read Cell Voltages: 4             | Clear Discharge: 14"));
+        Serial::println(F("Start Aux Voltage Conversion: 5   | Clear Registers: 15"));
+        Serial::println(F("Read Aux Voltages: 6              | Run Mux Self Test: 16"));
+        Serial::println(F("Start Stat Voltage Conversion: 7  | Run ADC overlap Test: 17"));
+        Serial::println(F("Read Stat Voltages: 8             | Run Digital Redundancy Test: 18"));
+        Serial::println(F("loop Measurements: 9              | Run Open Wire Test: 19"));
+        Serial::println(F("Read PEC Errors: 10               |  Loop measurements with datalog output: 20"));
+        Serial::println(F("States, MONITOR: 21, Charging: 22, Delete Datastore: 30"));
+        Serial::println(F("Please enter command: "));
+        Serial::println("");
     }
 
     void TBattery::check_debugging_input()

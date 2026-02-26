@@ -39,9 +39,9 @@ namespace t_battery
 #define MAX_DISCHARGE_CURRENT 400
 #define MAX_BALANCE_COUNT 5
 
-    uint64_t lastSaveTime;
-    uint64_t lastPollTime;
-    uint64_t lastStateTime;
+    extern uint64_t lastSaveTime;
+    extern uint64_t lastPollTime;
+    extern uint64_t lastStateTime;
 
     static_assert(TASK_PERIOD_MS != 0, "TASK_PERIOD_MS must be non-zero, as it is used as a divisor");
 
