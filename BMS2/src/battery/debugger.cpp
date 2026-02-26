@@ -2,20 +2,254 @@
 #include "battery/t_battery.hpp"
 #include "hardware/LTC/LTC6811.h"
 #include "battery/t_battery.hpp"
+#include "util/cmp.hpp"
+#include <cstdint>
+#include <cstring>
+#include <optional>
+#include <algorithm>
+#include "freertos/FreeRTOS.h"
+#include "driver/gpio.h"
+#include "esp_timer.h"
+#include "battery/q_battery.hpp"
+#include "battery/faults.hpp"
+#include "battery/parameters.hpp"
+#include "battery/battery.hpp"
+#include "logger/q_logger.hpp"
+#include "hardware/pins.hpp"
+#include "util/overloaded.hpp"
+#include "util/cmp.hpp"
+#include "battery/t_battery.hpp"
+#include "hardware/LTC/LTC6811.h"
+#include "battery/modes.hpp"
+#include "logger/t_logger.hpp"
+#include "battery/battery.hpp"
+#include "util/serial.hpp"
+#include "hardware/pins.hpp"
+#include "math.h"
+#include "esp_littlefs.h"
+#include <unistd.h>
+
+#define ENABLED_VAL 1
+#define DISABLED_VAL 0
+#define DEC 10
+#define TOTAL_IC battery::IC_COUNT
 
 namespace t_battery
 {
+
+    // Nothing function??
+    inline char *F(char *str)
+    {
+        return str;
+    }
+
+    inline void checkError(int error)
+    {
+        if (error == -1)
+        {
+            Serial::println(F("A PEC error was detected in the received data"));
+        }
+    }
+
+    void TBattery::printOpen()
+    {
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            if (bms_ic[current_ic].system_open_wire == 0)
+            {
+                Serial::print("No Opens Detected on IC: ");
+                Serial::print(current_ic + 1, DEC);
+                Serial::println();
+            }
+            else
+            {
+                for (int cell = 0; cell < bms_ic[0].ic_reg.cell_channels + 1; cell++)
+                {
+                    if ((bms_ic[current_ic].system_open_wire & (1 << cell)) > 0)
+                    {
+                        Serial::print(F("There is an open wire on IC: "));
+                        Serial::print(current_ic + 1, DEC);
+                        Serial::print(F(" Channel: "));
+                        Serial::print(cell, DEC);
+                        Serial::println("");
+                    }
+                }
+            }
+        }
+    }
+
+    void TBattery::printAux(uint8_t datalog_en)
+    {
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            if (datalog_en == DISABLED_VAL)
+            {
+                Serial::print(" IC ");
+                Serial::print(current_ic + 1, DEC);
+                for (int i = 0; i < 5; i++)
+                {
+                    Serial::print(F(" GPIO-"));
+                    Serial::print(i + 1, DEC);
+                    Serial::print(":");
+                    Serial::print(bms_ic[current_ic].aux.a_codes[i] * 0.0001, 4);
+                    Serial::print(",");
+                }
+                Serial::print(F(" Vref2"));
+                Serial::print(":");
+                Serial::print(bms_ic[current_ic].aux.a_codes[5] * 0.0001, 4);
+                Serial::println();
+            }
+            else
+            {
+                Serial::print("AUX, ");
+
+                for (int i = 0; i < 6; i++)
+                {
+                    Serial::print(bms_ic[current_ic].aux.a_codes[i] * 0.0001, 4);
+                    Serial::print(",");
+                }
+            }
+        }
+        Serial::println();
+    }
+
+    void TBattery::printStat()
+    {
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            Serial::print(F(" IC "));
+            Serial::print(current_ic + 1, DEC);
+            Serial::print(F(" SOC:"));
+            Serial::print(bms_ic[current_ic].stat.stat_codes[0] * 0.0001 * 20, 4);
+            Serial::print(F(","));
+            Serial::print(F(" Itemp:"));
+            Serial::print(bms_ic[current_ic].stat.stat_codes[1] * 0.0001, 4);
+            Serial::print(F(","));
+            Serial::print(F(" VregA:"));
+            Serial::print(bms_ic[current_ic].stat.stat_codes[2] * 0.0001, 4);
+            Serial::print(F(","));
+            Serial::print(F(" VregD:"));
+            Serial::print(bms_ic[current_ic].stat.stat_codes[3] * 0.0001, 4);
+            Serial::println();
+        }
+
+        Serial::println();
+    }
+
+    void TBattery::printConfig()
+    {
+        int cfg_pec;
+
+        Serial::println(F("Written Configuration: "));
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            Serial::print(F(" IC "));
+            Serial::print(current_ic + 1, DEC);
+            Serial::print(F(": "));
+            Serial::print(F("0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[0], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[1], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[2], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[3], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[4], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.tx_data[5], 16);
+            Serial::print(F(", Calculated PEC: 0x"));
+            cfg_pec = pec15_calc(6, &bms_ic[current_ic].config.tx_data[0]);
+            Serial::print((uint8_t)(cfg_pec >> 8), 16);
+            Serial::print(F(", 0x"));
+            Serial::print((uint8_t)(cfg_pec), 16);
+            Serial::println();
+        }
+        Serial::println();
+    }
+
+    void TBattery::printRxConfig()
+    {
+        Serial::println(F("Received Configuration "));
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            Serial::print(F(" IC "));
+            Serial::print(current_ic + 1, DEC);
+            Serial::print(F(": 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[0], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[1], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[2], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[3], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[4], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[5], 16);
+            Serial::print(F(", Received PEC: 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[6], 16);
+            Serial::print(F(", 0x"));
+            Serial::print(bms_ic[current_ic].config.rx_data[7], 16);
+            Serial::println();
+        }
+        Serial::println();
+    }
+
+    void TBattery::printPec()
+    {
+        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        {
+            Serial::println("");
+            Serial::print(bms_ic[current_ic].crc_count.pec_count, DEC);
+            Serial::print(F(" : PEC Errors Detected on IC"));
+            Serial::print(current_ic + 1, DEC);
+            Serial::println("");
+        }
+    }
+
+    void TBattery::printCells(uint8_t datalog_en)
+    {
+        for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
+        {
+            if (datalog_en == 0)
+            {
+                Serial::print(" IC ");
+                Serial::print(current_ic + 1, DEC);
+                Serial::print(", ");
+                for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
+                {
+                    Serial::print(" C");
+                    Serial::print(i + 1, DEC);
+                    Serial::print(":");
+                    Serial::print(this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001, 4);
+                    Serial::print(",");
+                }
+                Serial::println();
+            }
+            else
+            {
+                Serial::print("Cells, ");
+                for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
+                {
+                    Serial::print(this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001, 4);
+                    Serial::print(",");
+                }
+            }
+        }
+        Serial::println();
+    }
+
     void TBattery::check_debugging_input()
     {
         if (unlikely(Serial::available()))
         {
             uint32_t user_command;
             user_command = Serial::read_int(); // Read the user command
-            Serial::println(user_command);
+            Serial::print(user_command, 10);
+            Serial::println("");
 
-            xSemaphoreTake(xMutex, portMAX_DELAY);
             runCommand(user_command);
-            xSemaphoreGive(xMutex);
         }
     }
 
@@ -23,13 +257,10 @@ namespace t_battery
     {
         int8_t error = 0;
         uint32_t conv_time = 0;
-        uint32_t user_command;
         int8_t readIC = 0;
         char input = 0;
 
         // legacy conversion variables
-        const uint8_t TOTAL_IC = battery::IC_COUNT;
-        const int DEC = 10;
 
         switch (cmd)
         {
@@ -105,7 +336,7 @@ namespace t_battery
                     input = Serial::getChar();
                 }
 
-                measurementLoop(DISABLED_VAL);
+                measure();
 
                 vTaskDelay(pdMS_TO_TICKS(MEASUREMENT_LOOP_TIME));
             }
@@ -219,7 +450,7 @@ namespace t_battery
                     input = Serial::getChar();
                 }
 
-                measurementLoop(ENABLED_VAL);
+                measure();
 
                 vTaskDelay(pdMS_TO_TICKS(MEASUREMENT_LOOP_TIME));
             }
@@ -231,7 +462,7 @@ namespace t_battery
             break;
 
         case 21:
-            mode = modes::Mode::MONITOR;
+            mode = modes::Mode::MONITORING;
             break;
         case 22:
             mode = modes::Mode::BALANCING;
@@ -239,7 +470,7 @@ namespace t_battery
 
         case 30:
             Serial::printf("Deleting file: %s\r\n", "/log.csv");
-            if (SPIFFS.remove("/log.csv"))
+            if (unlink("/littlefs/log.csv")) // Use unlink to delete the file from LittleFS
             {
                 Serial::println("- file deleted");
             }
@@ -256,9 +487,106 @@ namespace t_battery
         }
     }
 
-    // Nothing function??
-    char *F(char *str)
+    bool TBattery::checkBatteryProblems()
     {
-        return str;
+        // Check temperature difference
+        tDiffTriggered = false;
+
+        const int TEMPS_COUNT = sizeof(battery_data.temps.therms) / sizeof(battery_data.temps.therms[0]);
+        for (int i = 0; i < TEMPS_COUNT; i++)
+        {
+            for (int j = i + 1; j < TEMPS_COUNT; j++)
+            { // Avoid redundant comparisons
+                if (abs(battery_data.temps.therms[i] - battery_data.temps.therms[j]) > parameters.t_diff)
+                {
+                    tDiffTriggered = true;
+                }
+            }
+        }
+
+        float minCurrent = (mode == modes::Mode::BALANCING) ? this->parameters.i_min : this->parameters.i_min_regen;
+        // Cell voltage
+        if (unlikely(this->battery_data.min_voltage < this->parameters.v_min))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::CELL_UNDERVOLTAGE);
+        }
+        if (unlikely(this->battery_data.max_voltage > this->parameters.v_max))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::CELL_OVERVOLTAGE);
+        }
+
+        // Average voltage
+        if (unlikely(this->battery_data.avg_voltage > this->parameters.v_max_avg))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::BATTERY_OVERVOLTAGE);
+        }
+        if (unlikely(this->battery_data.avg_voltage < this->parameters.v_min_avg))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::BATTERY_UNDERVOLTAGE);
+        }
+
+        // Voltage difference
+        if (unlikely(!util::check_difference(this->battery_data.max_voltage, this->battery_data.min_voltage, this->parameters.v_diff)))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE);
+        }
+
+        // Temprature s
+        if (unlikely(!util::check_within(this->battery_data.temps.therms[0], this->parameters.t_min, this->parameters.t_max)))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::TEMP_0);
+        }
+        if (unlikely(!util::check_within(this->battery_data.temps.therms[1], this->parameters.t_min, this->parameters.t_max)))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::TEMP_1);
+        }
+        if (unlikely(!util::check_within(this->battery_data.temps.therms[2], this->parameters.t_min, this->parameters.t_max)))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::TEMP_2);
+        }
+        if (unlikely(!util::check_within(this->battery_data.temps.therms[3], this->parameters.t_min, this->parameters.t_max)))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::TEMP_3);
+        }
+
+        // Current
+        if (unlikely(this->battery_data.current > this->parameters.i_max))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::OVERCURRENT);
+        }
+        if (unlikely(this->battery_data.current < minCurrent))
+        {
+            fault_manager.set_fault(true, faults::PersistentFault::UNDERCURRENT);
+        }
+
+        // Max power
+        if (unlikely((this->battery_data.avg_voltage * this->battery_data.current) > this->parameters.p_max))
+        {
+            fault_manager.set_fault(true, faults::WarningFault::OVERPOWER);
+        }
+
+        // battery.faults.coreZeroWatch is set in loop()
+
+        // pfaults removed due to being redundant with the fault manager's internal state
+        bool problems = fault_manager.get_persistent_faults() != 0;
+        // Not overPower
+        // Not coreZeroWatch
+
+        if (problems || fault_manager.get_current_fault(faults::WarningFault::OVERPOWER))
+        {
+            // Create a logline msg and send to logger
+            q_logger::msg::LogLine msg = {};
+            msg.timestamp = esp_timer_get_time();
+            for (size_t i = 0; i < battery::IC_COUNT; i++)
+            {
+                memcpy(
+                    &msg.voltages[i * battery::CELL_COUNT_PER_IC],
+                    this->battery_data.ics[i].cell_voltages,
+                    sizeof(this->battery_data.ics[i].cell_voltages));
+            }
+            xQueueSend(q_logger::g_logger_queue, &msg, 0);
+        }
+
+        return problems;
     }
 }

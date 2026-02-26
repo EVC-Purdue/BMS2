@@ -21,6 +21,7 @@
 #include "util/serial.hpp"
 #include "hardware/pins.hpp"
 #include "math.h"
+#include "t_battery.hpp"
 
 // TODO: RunCommand function
 
@@ -117,7 +118,7 @@ namespace t_battery
 
 		this->check_and_set_faults();
 
-		uint64_t loopTime;
+		uint64_t loopTime = MEASUREMENT_LOOP_TIME;
 		if (mode == modes::Mode::MONITORING ||
 			mode == modes::Mode::IDLE)
 		{
@@ -211,17 +212,7 @@ namespace t_battery
 		printConfig();
 
 		// Read from the battery management ICs and store in bms_ic
-		int8_t error = 0;
-		wakeup_idle(battery::IC_COUNT);
-		LTC6811_adcv(2, 0, 0);
-		LTC6811_pollAdc();
-		wakeup_idle(battery::IC_COUNT);
-		error = LTC6811_rdcv(0, battery::IC_COUNT, bms_ic);
-		if (unlikely(error))
-		{
-			// Handle error (e.g., log it, set fault flags, etc.)
-			printf("A PEC error was detected in the received data");
-		}
+		measure();
 
 		any_bypassed = false;
 		// check if any are going to end up being bypassed before we start updating values
@@ -269,6 +260,20 @@ namespace t_battery
 		battery_data.avg_voltage = battery_data.sum_voltage / (battery::IC_COUNT * bms_ic[0].ic_reg.cell_channels);
 	}
 
+	void TBattery::measure()
+	{
+		int8_t error = 0;
+		wakeup_idle(battery::IC_COUNT);
+		LTC6811_adcv(2, 0, 0);
+		LTC6811_pollAdc();
+		wakeup_idle(battery::IC_COUNT);
+		error = LTC6811_rdcv(0, battery::IC_COUNT, bms_ic);
+		if (unlikely(error))
+		{
+			// Handle error (e.g., log it, set fault flags, etc.)
+			printf("A PEC error was detected in the received data");
+		}
+	}
 	void TBattery::balanceCells()
 	{
 		clear_discharge(battery::IC_COUNT, bms_ic);
@@ -497,109 +502,6 @@ namespace t_battery
 		R = (3.3 - Vin) * 4640 / Vin;		   // thermistor resistance
 
 		return steinhart(R);
-	}
-
-	bool TBattery::checkBatteryProblems()
-	{
-		// Check temperature difference
-		tDiffTriggered = false;
-
-		const int TEMPS_COUNT = sizeof(battery_data.temps.therms) / sizeof(battery_data.temps.therms[0]);
-		for (int i = 0; i < TEMPS_COUNT; i++)
-		{
-			for (int j = i + 1; j < TEMPS_COUNT; j++)
-			{ // Avoid redundant comparisons
-				if (abs(battery_data.temps.therms[i] - battery_data.temps.therms[j]) > parameters.t_diff)
-				{
-					tDiffTriggered = true;
-				}
-			}
-		}
-
-		float minCurrent = (mode == modes::Mode::BALANCING) ? this->parameters.i_min : this->parameters.i_min_regen;
-		// Cell voltage
-		if (unlikely(this->battery_data.min_voltage < this->parameters.v_min))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::CELL_UNDERVOLTAGE);
-		}
-		if (unlikely(this->battery_data.max_voltage > this->parameters.v_max))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::CELL_OVERVOLTAGE);
-		}
-
-		// Average voltage
-		if (unlikely(this->battery_data.avg_voltage > this->parameters.v_max_avg))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::BATTERY_OVERVOLTAGE);
-		}
-		if (unlikely(this->battery_data.avg_voltage < this->parameters.v_min_avg))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::BATTERY_UNDERVOLTAGE);
-		}
-
-		// Voltage difference
-		if (unlikely(!util::check_difference(this->battery_data.max_voltage, this->battery_data.min_voltage, this->parameters.v_diff)))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE);
-		}
-
-		// Temprature s
-		if (unlikely(!util::check_within(this->battery_data.temps.therms[0], this->parameters.t_min, this->parameters.t_max)))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::TEMP_0);
-		}
-		if (unlikely(!util::check_within(this->battery_data.temps.therms[1], this->parameters.t_min, this->parameters.t_max)))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::TEMP_1);
-		}
-		if (unlikely(!util::check_within(this->battery_data.temps.therms[2], this->parameters.t_min, this->parameters.t_max)))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::TEMP_2);
-		}
-		if (unlikely(!util::check_within(this->battery_data.temps.therms[3], this->parameters.t_min, this->parameters.t_max)))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::TEMP_3);
-		}
-
-		// Current
-		if (unlikely(this->battery_data.current > this->parameters.i_max))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::OVERCURRENT);
-		}
-		if (unlikely(this->battery_data.current < minCurrent))
-		{
-			fault_manager.set_fault(true, faults::PersistentFault::UNDERCURRENT);
-		}
-
-		// Max power
-		if (unlikely((this->battery_data.avg_voltage * this->battery_data.current) > this->parameters.p_max))
-		{
-			fault_manager.set_fault(true, faults::WarningFault::OVERPOWER);
-		}
-
-		// battery.faults.coreZeroWatch is set in loop()
-
-		// pfaults removed due to being redundant with the fault manager's internal state
-		bool problems = fault_manager.get_persistent_faults() != 0;
-		// Not overPower
-		// Not coreZeroWatch
-
-		if (problems || fault_manager.get_current_fault(faults::WarningFault::OVERPOWER))
-		{
-			// Create a logline msg and send to logger
-			q_logger::msg::LogLine msg = {};
-			msg.timestamp = esp_timer_get_time();
-			for (size_t i = 0; i < battery::IC_COUNT; i++)
-			{
-				memcpy(
-					&msg.voltages[i * battery::CELL_COUNT_PER_IC],
-					this->battery_data.ics[i].cell_voltages,
-					sizeof(this->battery_data.ics[i].cell_voltages));
-			}
-			xQueueSend(q_logger::g_logger_queue, &msg, 0);
-		}
-
-		return problems;
 	}
 
 	void TBattery::printConfig()

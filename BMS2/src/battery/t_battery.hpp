@@ -70,6 +70,7 @@ namespace t_battery
         void check_and_set_faults();
 
         void readBattery();
+        void measure();
         void balanceCells();
         void readTempatures();
         bool checkBatteryProblems();
@@ -79,10 +80,16 @@ namespace t_battery
         void setAmplifierGain();
         void adjustGain(float voltage);
 
-        int sortDescCompFn(const void *cmp1, const void *cmp2);
         void printConfig();
         void runCommand(uint32_t cmd);
         void check_debugging_input();
+        void printCells(uint8_t datalog_en);
+        void printMenu();
+        void printPec();
+        void printOpen();
+        void printStat();
+        void printAux(uint8_t datalog_en);
+        void printRxConfig();
 
     public:
         TBattery(uint32_t period);

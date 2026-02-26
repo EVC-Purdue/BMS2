@@ -1,16 +1,15 @@
-
 #include <cstdint>
-
 #include "freertos/FreeRTOS.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
-
 #include "hardware/hardware.hpp"
 #include "battery/t_battery.hpp"
 #include "battery/q_battery.hpp"
 #include "logger/t_logger.hpp"
 #include "logger/q_logger.hpp"
 #include "util/err.hpp"
+#include "esp_littlefs.h"
+#include <unistd.h>
 
 // Tasks
 static t_battery::TBattery gs_t_battery(t_battery::TASK_PERIOD_MS);
@@ -32,6 +31,15 @@ extern "C" void app_main()
     // Hardware configuration and setup
     hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
+
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = "/littlefs",
+        .partition_label = "littlefs",
+        .format_if_mount_failed = true,
+        .dont_mount = false,
+    };
+
+    esp_vfs_littlefs_register(&conf);
 
     // Queue initialization
     q_battery::g_battery_queue = xQueueCreate(q_battery::QUEUE_SIZE, sizeof(q_battery::Message));
