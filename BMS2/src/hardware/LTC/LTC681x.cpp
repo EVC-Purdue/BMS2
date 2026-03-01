@@ -80,7 +80,7 @@ void cmd_68(uint8_t tx_cmd[2])
 {
   uint8_t cmd[4];
   uint16_t cmd_pec;
-  uint8_t md_bits;
+  // uint8_t md_bits;
 
   cmd[0] = tx_cmd[0];
   cmd[1] =  tx_cmd[1];
@@ -1680,7 +1680,7 @@ int8_t LTC681x_rdpwm(uint8_t total_ic, //Number of ICs in the system
                      cell_asic ic[]
                     )
 {
-  const uint8_t BYTES_IN_REG = 8;
+  // const uint8_t BYTES_IN_REG = 8;
 
   uint8_t cmd[4];
   uint8_t read_buffer[256];

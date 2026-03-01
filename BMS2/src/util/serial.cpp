@@ -27,7 +27,6 @@ namespace Serial
 		uart_set_pin(pins::ESP::UART_NUM, TX_PIN, RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 	}
 
-	// TODO: Impliment master functions
 	void print(const char *str)
 	{
 		uart_write_bytes(pins::ESP::UART_NUM, str, strlen(str));
