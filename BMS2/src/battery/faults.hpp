@@ -51,7 +51,7 @@ namespace faults
         TEMPS_IMBALANCE,                        // Temperature sensors differ too much
         BALANCE_THERMAL,                        // Balance resistor temperature too high
         CORE_ZERO_WATCH,                        // Core zero (watchdog fault, likely software crash)
-        WARNING_FAULTS_END
+        WARNING_FAULTS_END                      // Final fault
     };
 
     // uint32_t is used to store faults, so total fault count must not exceed 32

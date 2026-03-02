@@ -3,11 +3,9 @@
 
 #include <cstddef>
 #include <variant>
-
 #include "freertos/FreeRTOS.h"
-
 #include "battery/battery.hpp"
-
+#include "battery/modes.hpp"
 
 
 namespace q_logger {
@@ -23,6 +21,7 @@ namespace msg {
         int64_t timestamp;
         uint32_t voltages[battery::IC_COUNT * battery::CELL_COUNT_PER_IC];
         battery::TempData temps;
+        modes::Mode mode;
         float current;
         uint32_t faults;
     };

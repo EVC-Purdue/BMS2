@@ -74,6 +74,7 @@ namespace t_battery
         void balanceCells();
         void readTempatures();
         bool checkBatteryProblems();
+        void generateLogLine();
         float cellTemp(float voltage);
         float steinhart(float R);
         float convertCurrent(float voltage);

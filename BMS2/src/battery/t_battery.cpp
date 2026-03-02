@@ -148,7 +148,7 @@ namespace t_battery
 				readBattery();
 				readTempatures();
 				balanceCells();
-				t_logger::saveEventCounter++;
+				generateLogLine();
 				break;
 			case modes::Mode::IDLE:
 				readTempatures();
@@ -166,7 +166,7 @@ namespace t_battery
 		if (mode == modes::Mode::MONITORING && currentTime - lastSaveTime > parameters.log_inter)
 		{
 			lastSaveTime = currentTime;
-			t_logger::saveEventCounter++;
+			generateLogLine();
 		}
 
 		// integer division will floor the result, which is desired here
@@ -539,5 +539,24 @@ namespace t_battery
 			Serial::println("");
 		}
 		Serial::println("");
+	}
+
+	void TBattery::generateLogLine()
+	{
+		// Create a logline msg and send to logger
+		q_logger::msg::LogLine msg = {};
+		msg.timestamp = esp_timer_get_time();
+		for (size_t i = 0; i < battery::IC_COUNT; i++)
+		{
+			memcpy(
+				&msg.voltages[i * battery::CELL_COUNT_PER_IC],
+				this->battery_data.ics[i].cell_voltages,
+				sizeof(this->battery_data.ics[i].cell_voltages));
+		}
+		msg.temps = this->battery_data.temps;
+		msg.mode = this->mode;
+		msg.current = this->battery_data.current;
+		msg.faults = this->fault_manager.get_current_set_faults();
+		xQueueSend(q_logger::g_logger_queue, &msg, 0);
 	}
 } // namespace t_battery

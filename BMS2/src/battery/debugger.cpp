@@ -28,6 +28,7 @@
 #include "math.h"
 #include "esp_littlefs.h"
 #include <unistd.h>
+#include "t_battery.hpp"
 
 #define ENABLED 1
 #define DISABLED 0
@@ -559,17 +560,7 @@ namespace t_battery
 
         if (problems || fault_manager.get_current_fault(faults::WarningFault::OVERPOWER))
         {
-            // Create a logline msg and send to logger
-            q_logger::msg::LogLine msg = {};
-            msg.timestamp = esp_timer_get_time();
-            for (size_t i = 0; i < battery::IC_COUNT; i++)
-            {
-                memcpy(
-                    &msg.voltages[i * battery::CELL_COUNT_PER_IC],
-                    this->battery_data.ics[i].cell_voltages,
-                    sizeof(this->battery_data.ics[i].cell_voltages));
-            }
-            xQueueSend(q_logger::g_logger_queue, &msg, 0);
+            generateLogLine();
         }
 
         return problems;

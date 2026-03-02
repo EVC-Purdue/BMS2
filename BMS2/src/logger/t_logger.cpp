@@ -1,23 +1,18 @@
 #include <cstdio>
 #include <cstring>
-
 #include "freertos/FreeRTOS.h"
 #include "esp_spiffs.h"
 #include "esp_err.h"
-
 #include "logger/q_logger.hpp"
 #include "battery/faults.hpp"
 #include "util/overloaded.hpp"
 #include "util/err.hpp"
-
-
 #include "logger/t_logger.hpp"
+#include "logger/Web/web.hpp"
 
 
 
 namespace t_logger {
-
-int saveEventCounter = 0;
 
 TLogger::TLogger(uint32_t period)
     : task_base::TaskBase(period),
@@ -152,7 +147,8 @@ void TLogger::task() {
             }
         }, rx_msg);
     }
-    
+
+    // TODO: check for web requests
 }
 
 

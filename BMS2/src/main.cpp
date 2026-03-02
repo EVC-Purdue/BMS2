@@ -37,7 +37,7 @@ extern "C" void app_main()
     // Configure and mount LittleFS (file system)
     esp_vfs_littlefs_conf_t conf = {
         .base_path = "/littlefs",
-        .partition_label = "littlefs",
+        .partition_label = "storage",
         .format_if_mount_failed = true,
         .dont_mount = false,
     };
