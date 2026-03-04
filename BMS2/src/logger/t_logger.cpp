@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include "freertos/FreeRTOS.h"
-#include "esp_spiffs.h"
+#include "esp_littlefs.h"
 #include "esp_err.h"
 #include "logger/q_logger.hpp"
 #include "battery/faults.hpp"
@@ -17,33 +17,45 @@ namespace t_logger {
 TLogger::TLogger(uint32_t period)
     : task_base::TaskBase(period),
     param_delete_log_if_full(false),
-    spiffs_usage_ratio(0.0f),
-    spiffs_usage_write_count(0),
+    filesystem_usage_ratio(0.0f),
+    filesystem_usage_write_count(0),
     write_buffer_index(0),
     write_buffer{0},
     log_line_buffer{0}
     {}
 
 
-void TLogger::write_buffer_to_spiffs() {
+void TLogger::write_buffer_to_filesystem() {
     if (this->write_buffer_index == 0) {
         return; // Nothing to write
     }
 
-    // Check SPIFFS usage
-    if (this->spiffs_usage_write_count >= SPIFFS_RECHECK_USAGE_WRITES_COUNT) {
+    // Check Filesystem usage
+    if (this->filesystem_usage_write_count >= FILESYSTEM_RECHECK_USAGE_WRITES_COUNT) {
         size_t total = 0;
         size_t used = 0;
-        ESP_ERROR_CHECK(esp_spiffs_info(nullptr, &total, &used));
-        this->spiffs_usage_ratio = static_cast<float>(used) / static_cast<float>(total);
-        this->spiffs_usage_write_count = 0;
+        if(esp_littlefs_info("storage", &total, &used) == ESP_OK && total > 0) {
+             this->filesystem_usage_ratio = static_cast<float>(used) / static_cast<float>(total);
+        } else {
+             // If info fails, we can't determine usage. 
+             // Safest to assume 0 to avoid blocking writes if it's just a query error,
+             // or handle as full? If not mounted, write will fail anyway.
+             this->filesystem_usage_ratio = 0.0f; 
+        }
+        this->filesystem_usage_write_count = 0;
     } else {
-        this->spiffs_usage_write_count++;
+        this->filesystem_usage_write_count++;
     }
 
-    if (this->spiffs_usage_ratio > SPIFFS_MAX_USAGE_RATIO) {
+    if (this->filesystem_usage_ratio > FILESYSTEM_MAX_USAGE_RATIO) {
         if (this->param_delete_log_if_full) {
-            UTIL_CHECK_REQUIRE(std::remove(LOG_FILE_PATH) == 0);
+                // If full and allowed to delete, delete file and check if successful
+                if(std::remove(LOG_FILE_PATH) != 0) {
+                    // if delete failed, do not write.
+                    // This is safer than aborting if file is locked or other issues
+                     this->write_buffer_index = 0; 
+                     return;
+                }
         } else {
             // Do not write if storage is full and deletion is not allowed
             this->write_buffer_index = 0; // Discard/reset buffer
@@ -123,7 +135,7 @@ void TLogger::task() {
 
                 // If the log line doesn't fit in the remaining buffer, flush first
                 if (this->write_buffer_index + written > WRITE_BUFFER_SIZE) {
-                    this->write_buffer_to_spiffs();
+                    this->write_buffer_to_filesystem();
                 }
                 // Copy log line to write buffer
                 std::memcpy(
@@ -140,7 +152,7 @@ void TLogger::task() {
                 // Handle read end
             },
             [this](const q_logger::msg::Flush& _m) {
-                this->write_buffer_to_spiffs();
+                this->write_buffer_to_filesystem();
             },
             [this](const q_logger::msg::SetDeleteLog& m) {
                 this->param_delete_log_if_full = m.delete_log;

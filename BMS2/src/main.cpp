@@ -43,7 +43,35 @@ extern "C" void app_main()
         .format_if_mount_failed = true,
         .dont_mount = false,
     };
-    esp_vfs_littlefs_register(&conf);
+    esp_err_t ret = esp_vfs_littlefs_register(&conf);
+    if (ret != ESP_OK)
+    {
+        if (ret == ESP_FAIL)
+        {
+            printf("Failed to mount or format filesystem\n");
+        }
+        else if (ret == ESP_ERR_NOT_FOUND)
+        {
+            printf("Failed to find LittleFS partition\n");
+        }
+        else
+        {
+            printf("Failed to initialize LittleFS (%s)\n", esp_err_to_name(ret));
+        }
+    }
+    else
+    {
+         size_t total = 0, used = 0;
+         ret = esp_littlefs_info("storage", &total, &used);
+         if (ret != ESP_OK)
+         {
+             printf("Failed to get LittleFS partition information (%s)\n", esp_err_to_name(ret));
+         }
+         else
+         {
+             printf("Partition size: total: %d, used: %d\n", total, used);
+         }
+    }
 
     printf("Hardware configured, starting tasks...\n");
     // Queue initialization

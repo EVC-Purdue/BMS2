@@ -29,9 +29,9 @@ void configure_spi(spi_device_handle_t* spi_handle);
 // void configure_ledc();
 
 // Configure SPIFFs
-// void configure_spiffs();
+// void configure_spiffs(); // DEPRECATED
 
-// Calls all other configure functions (GPIO, SPI, LEDC, SPIFFS)
+// Calls all other configure functions (GPIO, SPI, LEDC)
 void configure(spi_device_handle_t* spi_handle);
 
 // Set the initial states of output pins

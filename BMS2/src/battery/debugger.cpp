@@ -490,7 +490,7 @@ namespace t_battery
             break;
 
         case 30:
-            printf("Deleting file: %s\r\n", "/log.csv");
+            printf("Deleting file: %s\r\n", "/littlefs/log.csv");
             if (unlink("/littlefs/log.csv")) // Use unlink to delete the file from LittleFS
             {
                 printf("- file deleted\n");

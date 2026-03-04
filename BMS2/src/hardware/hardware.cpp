@@ -80,13 +80,7 @@ void configure_spi(spi_device_handle_t* spi_handle) {
 // }
 
 // void configure_spiffs() {
-//     esp_vfs_spiffs_conf_t conf = {
-//         .base_path = SPIFFS_BASE_PATH,
-//         .partition_label = nullptr,
-//         .max_files = SPIFFS_MAX_FILES,
-//         .format_if_mount_failed = SPIFFS_FORMAT_IF_MOUNT_FAILED
-//     };
-//     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+//    // DEPRECATED: Use LittleFS initiated in main.cpp instead
 // }
 
 void configure(spi_device_handle_t* spi_handle) {
