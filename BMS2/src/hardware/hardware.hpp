@@ -26,10 +26,10 @@ void configure_gpio_output();
 void configure_spi(spi_device_handle_t* spi_handle);
 
 // Configure LEDC (buzzer) peripheral
-void configure_ledc();
+// void configure_ledc();
 
 // Configure SPIFFs
-void configure_spiffs();
+// void configure_spiffs();
 
 // Calls all other configure functions (GPIO, SPI, LEDC, SPIFFS)
 void configure(spi_device_handle_t* spi_handle);
@@ -39,7 +39,7 @@ void setup_initial_gpio_states();
 
 // Play a tone on the buzzer at the specified frequency (Hz) for the specified
 // duration (ms) (blocking)
-void play_buzzer_tone(uint32_t frequency_hz, uint32_t duration_ms);
+// void play_buzzer_tone(uint32_t frequency_hz, uint32_t duration_ms);
 } // namespace hardware
 
 #endif // HARDWARE_HPP

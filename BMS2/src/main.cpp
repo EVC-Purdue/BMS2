@@ -45,6 +45,7 @@ extern "C" void app_main()
     };
     esp_vfs_littlefs_register(&conf);
 
+    printf("Hardware configured, starting tasks...\n");
     // Queue initialization
     q_battery::g_battery_queue = xQueueCreate(q_battery::QUEUE_SIZE, sizeof(q_battery::Message));
     UTIL_CHECK_REQUIRE(q_battery::g_battery_queue != nullptr);
