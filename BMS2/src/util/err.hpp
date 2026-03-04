@@ -1,7 +1,8 @@
 #ifndef UTIL_ERR_HPP
 #define UTIL_ERR_HPP
 
-#include "esp_rom_sys.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 namespace util {
     // Macro which can be used to check a condition,
@@ -9,7 +10,7 @@ namespace util {
     #define UTIL_CHECK_REQUIRE(x) do {                                                          \
         bool _cond = (x);                                                                       \
         if (unlikely(!(_cond))) {                                                               \
-            esp_rom_printf("UTIL_CHECK_REQUIRE failed: %s at %s:%d\n", #x, __FILE__, __LINE__); \
+            printf("UTIL_CHECK_REQUIRE failed: %s at %s:%d\n", #x, __FILE__, __LINE__); \
             abort();                                                                            \
         }                                                                                       \
     } while(0)

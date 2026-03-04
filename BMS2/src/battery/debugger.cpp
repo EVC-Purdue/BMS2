@@ -1,4 +1,3 @@
-#include "util/serial.hpp"
 #include "battery/t_battery.hpp"
 #include "hardware/LTC/LTC6811.h"
 #include "battery/t_battery.hpp"
@@ -7,6 +6,7 @@
 #include <cstring>
 #include <optional>
 #include <algorithm>
+#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
@@ -23,31 +23,66 @@
 #include "battery/modes.hpp"
 #include "logger/t_logger.hpp"
 #include "battery/battery.hpp"
-#include "util/serial.hpp"
 #include "hardware/pins.hpp"
 #include "math.h"
 #include "esp_littlefs.h"
 #include <unistd.h>
 #include "t_battery.hpp"
+#include <stdio.h>
+#include <sys/select.h>
+#include <fcntl.h>
 
 #define ENABLED 1
 #define DISABLED 0
-#define DEC 10
 
 namespace t_battery
 {
+    // Helper function to check if input is available
+    static bool console_available() {
+        struct timeval tv = {0, 0};
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+    }
 
-    // Nothing function??
-    inline char *F(char *str)
-    {
-        return str;
+    // Helper function to read an integer (blocking until newline)
+    static int console_read_int() {
+        char buf[32];
+        int idx = 0;
+        int c;
+        // Simple line reader
+        while(idx < sizeof(buf)-1) {
+            c = fgetc(stdin);
+            if(c == EOF) {
+                 vTaskDelay(pdMS_TO_TICKS(10));
+                 continue; 
+            }
+            if(c == '\n' || c == '\r') {
+                if (idx == 0 && c == '\r') continue; // consume CR if empty?
+                if (idx > 0) break;
+                // if idx is 0, we might have just hit enter without typing number? 
+                // Original code was tricky. Let's assume user types number then enter.
+                break; 
+            }
+            buf[idx++] = (char)c;
+        }
+        buf[idx] = 0;
+        return atoi(buf);
+    }
+    
+    // Helper function to read a char
+    static char console_getChar() {
+        int c = fgetc(stdin);
+        if (c == EOF) return 0;
+        return (char)c;
     }
 
     inline void checkError(int error)
     {
         if (error == -1)
         {
-            Serial::println(F("A PEC error was detected in the received data"));
+            printf("A PEC error was detected in the received data\n");
         }
     }
 
@@ -57,9 +92,9 @@ namespace t_battery
         {
             if (bms_ic[current_ic].system_open_wire == 0)
             {
-                Serial::print("No Opens Detected on IC: ");
-                Serial::print(current_ic + 1, DEC);
-                Serial::println();
+                printf("No Opens Detected on IC: ");
+                printf("%d", current_ic + 1);
+                printf("\n");
             }
             else
             {
@@ -67,11 +102,11 @@ namespace t_battery
                 {
                     if ((bms_ic[current_ic].system_open_wire & (1 << cell)) > 0)
                     {
-                        Serial::print(F("There is an open wire on IC: "));
-                        Serial::print(current_ic + 1, DEC);
-                        Serial::print(F(" Channel: "));
-                        Serial::print(cell, DEC);
-                        Serial::println("");
+                        printf("There is an open wire on IC: ");
+                        printf("%d", current_ic + 1);
+                        printf(" Channel: ");
+                        printf("%d", cell);
+                        printf("\n");
                     }
                 }
             }
@@ -84,95 +119,95 @@ namespace t_battery
         {
             if (datalog_en == DISABLED)
             {
-                Serial::print(" IC ");
-                Serial::print(current_ic + 1, DEC);
+                printf(" IC ");
+                printf("%d", current_ic + 1);
                 for (int i = 0; i < 5; i++)
                 {
-                    Serial::print(F(" GPIO-"));
-                    Serial::print(i + 1, DEC);
-                    Serial::print(":");
-                    Serial::print(bms_ic[current_ic].aux.a_codes[i] * 0.0001, 4);
-                    Serial::print(",");
+                    printf(" GPIO-");
+                    printf("%d", i + 1);
+                    printf(":");
+                    printf("%.4f", bms_ic[current_ic].aux.a_codes[i] * 0.0001);
+                    printf(",");
                 }
-                Serial::print(F(" Vref2"));
-                Serial::print(":");
-                Serial::print(bms_ic[current_ic].aux.a_codes[5] * 0.0001, 4);
-                Serial::println();
+                printf(" Vref2");
+                printf(":");
+                printf("%.4f", bms_ic[current_ic].aux.a_codes[5] * 0.0001);
+                printf("\n");
             }
             else
             {
-                Serial::print("AUX, ");
+                printf("AUX, ");
 
                 for (int i = 0; i < 6; i++)
                 {
-                    Serial::print(bms_ic[current_ic].aux.a_codes[i] * 0.0001, 4);
-                    Serial::print(",");
+                    printf("%.4f", bms_ic[current_ic].aux.a_codes[i] * 0.0001);
+                    printf(",");
                 }
             }
         }
-        Serial::println();
+        printf("\n");
     }
 
     void TBattery::printStat()
     {
         for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
-            Serial::print(F(" IC "));
-            Serial::print(current_ic + 1, DEC);
-            Serial::print(F(" SOC:"));
-            Serial::print(bms_ic[current_ic].stat.stat_codes[0] * 0.0001 * 20, 4);
-            Serial::print(F(","));
-            Serial::print(F(" Itemp:"));
-            Serial::print(bms_ic[current_ic].stat.stat_codes[1] * 0.0001, 4);
-            Serial::print(F(","));
-            Serial::print(F(" VregA:"));
-            Serial::print(bms_ic[current_ic].stat.stat_codes[2] * 0.0001, 4);
-            Serial::print(F(","));
-            Serial::print(F(" VregD:"));
-            Serial::print(bms_ic[current_ic].stat.stat_codes[3] * 0.0001, 4);
-            Serial::println();
+            printf(" IC ");
+            printf("%d", current_ic + 1);
+            printf(" SOC:");
+            printf("%.4f", bms_ic[current_ic].stat.stat_codes[0] * 0.0001 * 20);
+            printf(",");
+            printf(" Itemp:");
+            printf("%.4f", bms_ic[current_ic].stat.stat_codes[1] * 0.0001);
+            printf(",");
+            printf(" VregA:");
+            printf("%.4f", bms_ic[current_ic].stat.stat_codes[2] * 0.0001);
+            printf(",");
+            printf(" VregD:");
+            printf("%.4f", bms_ic[current_ic].stat.stat_codes[3] * 0.0001);
+            printf("\n");
         }
 
-        Serial::println();
+        printf("\n");
     }
 
     void TBattery::printRxConfig()
     {
-        Serial::println(F("Received Configuration "));
+        printf("Received Configuration \n");
         for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
-            Serial::print(F(" IC "));
-            Serial::print(current_ic + 1, DEC);
-            Serial::print(F(": 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[0], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[1], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[2], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[3], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[4], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[5], 16);
-            Serial::print(F(", Received PEC: 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[6], 16);
-            Serial::print(F(", 0x"));
-            Serial::print(bms_ic[current_ic].config.rx_data[7], 16);
-            Serial::println();
+            printf(" IC ");
+            printf("%d", current_ic + 1);
+            printf(": 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[0]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[1]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[2]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[3]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[4]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[5]);
+            printf(", Received PEC: 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[6]);
+            printf(", 0x");
+            printf("%X", bms_ic[current_ic].config.rx_data[7]);
+            printf("\n");
         }
-        Serial::println();
+        printf("\n");
     }
 
     void TBattery::printPec()
     {
         for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
-            Serial::println("");
-            Serial::print(bms_ic[current_ic].crc_count.pec_count, DEC);
-            Serial::print(F(" : PEC Errors Detected on IC"));
-            Serial::print(current_ic + 1, DEC);
-            Serial::println("");
+            printf("\n");
+            printf("%d", bms_ic[current_ic].crc_count.pec_count);
+            printf(" : PEC Errors Detected on IC");
+            printf("%d", current_ic + 1);
+            printf("\n");
         }
     }
 
@@ -182,58 +217,58 @@ namespace t_battery
         {
             if (datalog_en == 0)
             {
-                Serial::print(" IC ");
-                Serial::print(current_ic + 1, DEC);
-                Serial::print(", ");
+                printf(" IC ");
+                printf("%d", current_ic + 1);
+                printf(", ");
                 for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
                 {
-                    Serial::print(" C");
-                    Serial::print(i + 1, DEC);
-                    Serial::print(":");
-                    Serial::print(this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001, 4);
-                    Serial::print(",");
+                    printf(" C");
+                    printf("%d", i + 1);
+                    printf(":");
+                    printf("%.4f", this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001);
+                    printf(",");
                 }
-                Serial::println();
+                printf("\n");
             }
             else
             {
-                Serial::print("Cells, ");
+                printf("Cells, ");
                 for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
                 {
-                    Serial::print(this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001, 4);
-                    Serial::print(",");
+                    printf("%.4f", this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001);
+                    printf(",");
                 }
             }
         }
-        Serial::println();
+        printf("\n");
     }
 
     void TBattery::printMenu()
     {
-        Serial::println(F("Please enter LTC6811 Command"));
-        Serial::println(F("Write Configuration: 1            | Reset PEC Counter: 11 "));
-        Serial::println(F("Read Configuration: 2             | Run ADC Self Test: 12"));
-        Serial::println(F("Start Cell Voltage Conversion: 3  | Set Discharge: 13"));
-        Serial::println(F("Read Cell Voltages: 4             | Clear Discharge: 14"));
-        Serial::println(F("Start Aux Voltage Conversion: 5   | Clear Registers: 15"));
-        Serial::println(F("Read Aux Voltages: 6              | Run Mux Self Test: 16"));
-        Serial::println(F("Start Stat Voltage Conversion: 7  | Run ADC overlap Test: 17"));
-        Serial::println(F("Read Stat Voltages: 8             | Run Digital Redundancy Test: 18"));
-        Serial::println(F("loop Measurements: 9              | Run Open Wire Test: 19"));
-        Serial::println(F("Read PEC Errors: 10               |  Loop measurements with datalog output: 20"));
-        Serial::println(F("States, MONITOR: 21, Charging: 22, Delete Datastore: 30"));
-        Serial::println(F("Please enter command: "));
-        Serial::println("");
+        printf("Please enter LTC6811 Command\n");
+        printf("Write Configuration: 1            | Reset PEC Counter: 11 \n");
+        printf("Read Configuration: 2             | Run ADC Self Test: 12\n");
+        printf("Start Cell Voltage Conversion: 3  | Set Discharge: 13\n");
+        printf("Read Cell Voltages: 4             | Clear Discharge: 14\n");
+        printf("Start Aux Voltage Conversion: 5   | Clear Registers: 15\n");
+        printf("Read Aux Voltages: 6              | Run Mux Self Test: 16\n");
+        printf("Start Stat Voltage Conversion: 7  | Run ADC overlap Test: 17\n");
+        printf("Read Stat Voltages: 8             | Run Digital Redundancy Test: 18\n");
+        printf("loop Measurements: 9              | Run Open Wire Test: 19\n");
+        printf("Read PEC Errors: 10               |  Loop measurements with datalog output: 20\n");
+        printf("States, MONITOR: 21, Charging: 22, Delete Datastore: 30\n");
+        printf("Please enter command: \n");
+        printf("\n");
     }
 
     void TBattery::check_debugging_input()
     {
-        if (unlikely(Serial::available()))
+        if (unlikely(console_available()))
         {
             uint32_t user_command;
-            user_command = Serial::read_int(); // Read the user command
-            Serial::print(user_command, 10);
-            Serial::println("");
+            user_command = console_read_int(); // Read the user command
+            printf("%" PRIu32, user_command);
+            printf("\n");
 
             runCommand(user_command);
         }
@@ -267,10 +302,10 @@ namespace t_battery
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_adcv(ADC_CONVERSION_MODE, ADC_DCP, CELL_CH_TO_CONVERT);
             conv_time = LTC6811_pollAdc();
-            Serial::print(F("cell conversion completed in:"));
-            Serial::print(((float)conv_time / 1000), 1);
-            Serial::println(F("mS"));
-            Serial::println("");
+            printf("cell conversion completed in:");
+            printf("%.1f", ((float)conv_time / 1000));
+            printf("mS\n");
+            printf("\n");
             break;
 
         case 4: // Read Cell Voltage Registers
@@ -284,8 +319,8 @@ namespace t_battery
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
             LTC6811_pollAdc();
-            Serial::println(F("aux conversion completed"));
-            Serial::println("");
+            printf("aux conversion completed\n");
+            printf("\n");
             break;
 
         case 6: // Read AUX Voltage Registers
@@ -300,8 +335,8 @@ namespace t_battery
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_adstat(ADC_CONVERSION_MODE, STAT_CH_TO_CONVERT);
             LTC6811_pollAdc();
-            Serial::println(F("stat conversion completed"));
-            Serial::println("");
+            printf("stat conversion completed\n");
+            printf("\n");
             break;
 
         case 8: // Read Status registers
@@ -312,14 +347,14 @@ namespace t_battery
             break;
 
         case 9: // Loop Measurements
-            Serial::println("transmit 'm' to quit");
+            printf("transmit 'm' to quit\n");
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
             while (input != 'm')
             {
-                if (Serial::available() > 0)
+                if (console_available() > 0)
                 {
-                    input = Serial::getChar();
+                    input = console_getChar();
                 }
 
                 measure();
@@ -341,24 +376,24 @@ namespace t_battery
         case 12: // Run the ADC/Memory Self Test
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_run_cell_adc_st(CELL, ADC_CONVERSION_MODE, bms_ic);
-            Serial::print(error, DEC);
-            Serial::println(F(" : errors detected in Digital Filter and CELL Memory \n"));
+            printf("%d", error);
+            printf(" : errors detected in Digital Filter and CELL Memory \n\n");
 
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_run_cell_adc_st(AUX, ADC_CONVERSION_MODE, bms_ic);
-            Serial::print(error, DEC);
-            Serial::println(F(" : errors detected in Digital Filter and AUX Memory \n"));
+            printf("%d", error);
+            printf(" : errors detected in Digital Filter and AUX Memory \n\n");
 
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_run_cell_adc_st(STAT, ADC_CONVERSION_MODE, bms_ic);
-            Serial::print(error, DEC);
-            Serial::println(F(" : errors detected in Digital Filter and STAT Memory \n"));
+            printf("%d", error);
+            printf(" : errors detected in Digital Filter and STAT Memory \n\n");
             printMenu();
             break;
 
         case 13: // Enable a discharge transistor
-            Serial::println(F("Please enter the Spin number"));
-            readIC = (int8_t)Serial::read_int();
+            printf("Please enter the Spin number\n");
+            readIC = (int8_t)console_read_int();
             LTC6811_set_discharge(readIC, battery::IC_COUNT, bms_ic);
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
@@ -377,7 +412,7 @@ namespace t_battery
             LTC6811_clrcell();
             LTC6811_clraux();
             LTC6811_clrstat();
-            Serial::println(F("All Registers Cleared"));
+            printf("All Registers Cleared\n");
             break;
 
         case 16: // Run the Mux Decoder Self Test
@@ -393,9 +428,9 @@ namespace t_battery
                     error++;
             }
             if (error == 0)
-                Serial::println(F("Mux Test: PASS "));
+                printf("Mux Test: PASS \n");
             else
-                Serial::println(F("Mux Test: FAIL "));
+                printf("Mux Test: FAIL \n");
 
             break;
 
@@ -403,21 +438,21 @@ namespace t_battery
             wakeup_sleep(battery::IC_COUNT);
             error = (int8_t)LTC6811_run_adc_overlap(battery::IC_COUNT, bms_ic);
             if (error == 0)
-                Serial::println(F("Overlap Test: PASS "));
+                printf("Overlap Test: PASS \n");
             else
-                Serial::println(F("Overlap Test: FAIL"));
+                printf("Overlap Test: FAIL\n");
             break;
 
         case 18: // Run ADC Redundancy self test
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_run_adc_redundancy_st(ADC_CONVERSION_MODE, AUX, battery::IC_COUNT, bms_ic);
-            Serial::print(error, DEC);
-            Serial::println(F(" : errors detected in AUX Measurement \n"));
+            printf("%d", error);
+            printf(" : errors detected in AUX Measurement \n\n");
 
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_run_adc_redundancy_st(ADC_CONVERSION_MODE, STAT, battery::IC_COUNT, bms_ic);
-            Serial::print(error, DEC);
-            Serial::println(F(" : errors detected in STAT Measurement \n"));
+            printf("%d", error);
+            printf(" : errors detected in STAT Measurement \n\n");
             break;
 
         case 19:
@@ -426,14 +461,14 @@ namespace t_battery
             break;
 
         case 20: // Datalog print option Loop Measurements
-            Serial::println(F("transmit 'm' to quit"));
+            printf("transmit 'm' to quit\n");
             wakeup_sleep(battery::IC_COUNT);
             LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
             while (input != 'm')
             {
-                if (Serial::available() > 0)
+                if (console_available() > 0)
                 {
-                    input = Serial::getChar();
+                    input = console_getChar();
                 }
 
                 measure();
@@ -455,20 +490,20 @@ namespace t_battery
             break;
 
         case 30:
-            Serial::printf("Deleting file: %s\r\n", "/log.csv");
+            printf("Deleting file: %s\r\n", "/log.csv");
             if (unlink("/littlefs/log.csv")) // Use unlink to delete the file from LittleFS
             {
-                Serial::println("- file deleted");
+                printf("- file deleted\n");
             }
             else
             {
-                Serial::println("- delete failed");
+                printf("- delete failed\n");
             }
 
             break;
 
         default:
-            Serial::println(F("Incorrect Option"));
+            printf("Incorrect Option\n");
             break;
         }
     }

@@ -18,10 +18,11 @@
 #include "battery/modes.hpp"
 #include "logger/t_logger.hpp"
 #include "battery/battery.hpp"
-#include "util/serial.hpp"
+// #include "util/serial.hpp"
 #include "hardware/pins.hpp"
 #include "math.h"
 #include "t_battery.hpp"
+#include <stdio.h>
 
 // TODO: RunCommand function
 
@@ -341,12 +342,12 @@ namespace t_battery
 							  return val_a > val_b; // descending order
 						  });
 
-				Serial::printf("Cells largest to smalest: ");
+				printf("Cells largest to smalest: \n");
 
-				Serial::printf("Cell: %d\n", sortedCells[0] + 1);
+				printf("Cell: %d\n", sortedCells[0] + 1);
 				for (int i = 0; i < bms_ic[0].ic_reg.cell_channels - 1; i++)
 				{
-					Serial::printf("Cell: %d\n", sortedCells[i + 1] + 1);
+					printf("Cell: %d\n", sortedCells[i + 1] + 1);
 
 					if (sortedCells[i] == -1)
 					{
@@ -374,7 +375,7 @@ namespace t_battery
 						(packToSort->cell_voltages[sortedCells[i]] > battery_data.ics[current_ic].avg_voltage + 0.001 / 0.0001 ||
 						 packToSort->cell_voltages[sortedCells[i]] > battery_data.avg_voltage + 0.001 / 0.0001))
 					{ // 0.01 V above average.
-						Serial::printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
+						printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
 						LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, battery::IC_COUNT, bms_ic);
 						for (int j = 0; j < battery::CELL_COUNT_PER_IC; j++)
 						{
@@ -511,34 +512,23 @@ namespace t_battery
 	{
 		int cfg_pec;
 
-		Serial::println("Written Configuration: ");
+		printf("Written Configuration: \n");
 		for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
 		{
-			char ic_num_str[6]; // C be weird
-			snprintf(ic_num_str, sizeof(ic_num_str), "IC %d", current_ic + 1);
-			Serial::print(" IC ");
-			Serial::print(ic_num_str);
-			Serial::print(": ");
-			Serial::print("0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[0]);
-			Serial::print(", 0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[1]);
-			Serial::print(", 0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[2]);
-			Serial::print(", 0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[3]);
-			Serial::print(", 0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[4]);
-			Serial::print(", 0x");
-			Serial::printHex(bms_ic[current_ic].config.tx_data[5]);
-			Serial::print(", Calculated PEC: 0x");
+			printf(" IC IC %d: ", current_ic + 1);
+			printf("0x%X", bms_ic[current_ic].config.tx_data[0]);
+			printf(", 0x%X", bms_ic[current_ic].config.tx_data[1]);
+			printf(", 0x%X", bms_ic[current_ic].config.tx_data[2]);
+			printf(", 0x%X", bms_ic[current_ic].config.tx_data[3]);
+			printf(", 0x%X", bms_ic[current_ic].config.tx_data[4]);
+			printf(", 0x%X", bms_ic[current_ic].config.tx_data[5]);
+			printf(", Calculated PEC: 0x");
 			cfg_pec = pec15_calc(6, &bms_ic[current_ic].config.tx_data[0]);
-			Serial::printHex((uint8_t)(cfg_pec >> 8));
-			Serial::print(", 0x");
-			Serial::printHex((uint8_t)(cfg_pec));
-			Serial::println("");
+			printf("%X", (uint8_t)(cfg_pec >> 8));
+			printf(", 0x%X", (uint8_t)(cfg_pec));
+			printf("\n");
 		}
-		Serial::println("");
+		printf("\n");
 	}
 
 	void TBattery::generateLogLine()

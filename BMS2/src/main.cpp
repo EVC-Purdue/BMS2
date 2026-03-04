@@ -30,6 +30,8 @@ static spi_device_handle_t gs_spi_handle = nullptr;
 
 extern "C" void app_main()
 {
+
+    printf("Starting BMS2...\n");
     // Hardware configuration and setup
     hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
