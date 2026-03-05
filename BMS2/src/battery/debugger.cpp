@@ -34,7 +34,7 @@
 
 #define ENABLED 1
 #define DISABLED 0
-
+// Continuation of t_battery.cpp
 namespace t_battery
 {
     // Helper function to check if input is available

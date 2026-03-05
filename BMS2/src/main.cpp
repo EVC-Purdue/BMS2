@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include "hardware/hardware.hpp"
 #include "battery/t_battery.hpp"
 #include "battery/q_battery.hpp"
@@ -43,7 +44,11 @@ extern "C" void app_main()
         .format_if_mount_failed = true,
         .dont_mount = false,
     };
-    esp_vfs_littlefs_register(&conf);
+    esp_err_t littlefs_ret = esp_vfs_littlefs_register(&conf);
+    if (littlefs_ret != ESP_OK)
+    {
+        ESP_LOGE("main", "Failed to initialize LittleFS: %s", esp_err_to_name(littlefs_ret));
+    }
 
     printf("Hardware configured, starting tasks...\n");
     // Queue initialization

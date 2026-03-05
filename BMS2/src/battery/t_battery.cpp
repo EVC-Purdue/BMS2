@@ -24,8 +24,6 @@
 #include "t_battery.hpp"
 #include <stdio.h>
 
-// TODO: RunCommand function
-
 namespace t_battery
 {
 	int gain_set = 3;
@@ -43,6 +41,10 @@ namespace t_battery
 		  any_bypassed(false),
 		  iters_without_log(0)
 	{
+		// Required LTC data structure initialization. Without this,
+		// ic_reg.cell_channels can be zero and cause divide-by-zero later.
+		LTC6811_init_reg_limits(battery::IC_COUNT, bms_ic);
+		LTC6811_init_cfg(battery::IC_COUNT, bms_ic);
 	}
 
 	void TBattery::check_and_set_faults()
@@ -213,7 +215,7 @@ namespace t_battery
 
 		LTC6811_wrcfg(battery::IC_COUNT, bms_ic);
 		vTaskDelay(pdMS_TO_TICKS(100)); // allow the filters to settle
-		printConfig();
+		// printConfig();
 
 		// Read from the battery management ICs and store in bms_ic
 		measure();
@@ -224,9 +226,9 @@ namespace t_battery
 		{
 			for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
 			{
-				for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++)
+				for (int cell_num = 0; cell_num < bms_ic[0].ic_reg.cell_channels; cell_num++)
 				{
-					if (bms_ic[current_ic].cells.c_codes[i] * 0.0001 >= parameters.v_bypass)
+					if (bms_ic[current_ic].cells.c_codes[cell_num] * battery::RAW_TO_VOLTAGE_FACTOR >= parameters.v_bypass)
 					{
 						any_bypassed = true;
 						break;
@@ -248,6 +250,7 @@ namespace t_battery
 		{
 			for (int cell_num = 0; cell_num < bms_ic[0].ic_reg.cell_channels; cell_num++)
 			{
+				battery_data.ics[current_ic].cell_voltages[cell_num] = battery::TO_VOLTAGE(bms_ic[current_ic].cells.c_codes[cell_num]); // TODO: convert all to true voltages upon read
 				battery_data.sum_voltage += bms_ic[current_ic].cells.c_codes[cell_num];
 
 				if (bms_ic[current_ic].cells.c_codes[cell_num] < battery_data.min_voltage)
@@ -261,7 +264,14 @@ namespace t_battery
 				}
 			}
 		}
-		battery_data.avg_voltage = battery_data.sum_voltage / (battery::IC_COUNT * bms_ic[0].ic_reg.cell_channels);
+		const uint32_t total_cells = battery::IC_COUNT * bms_ic[0].ic_reg.cell_channels;
+		if (unlikely(total_cells == 0))
+		{
+			printf("Battery read skipped: total_cells is zero (LTC init/config issue)\n");
+			return;
+		}
+
+		battery_data.avg_voltage = battery_data.sum_voltage / total_cells;
 	}
 
 	void TBattery::measure()
