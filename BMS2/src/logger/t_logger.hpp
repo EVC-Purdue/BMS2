@@ -19,7 +19,7 @@ constexpr BaseType_t TASK_CORE_ID = 0;
 constexpr const char* TASK_NAME = "LoggingTask";
 
 constexpr float SPIFFS_MAX_USAGE_RATIO = 0.8f; 
-constexpr const char* LOG_FILE_PATH = "/spiffs/log.csv";
+constexpr const char* LOG_FILE_PATH = "/littlefs/log.csv";
 
 constexpr size_t SPIFFS_RECHECK_USAGE_WRITES_COUNT = 20; // Number of writes after which to recheck SPIFFS usage
 

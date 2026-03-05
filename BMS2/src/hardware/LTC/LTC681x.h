@@ -99,7 +99,7 @@ Copyright 2015 Linear Technology Corp. (LTC)
 #define STAT 3
 #define CFGR 0
 #define CFGRB 4
-#define CS_PIN 18
+#define CS_PIN pins::ESP::SPI_CS
 
 //! Cell Voltage data structure.
 typedef struct
