@@ -23,9 +23,11 @@
 #include "math.h"
 #include "t_battery.hpp"
 #include <stdio.h>
+#include "driver/usb_serial_jtag.h"
 
 namespace t_battery
 {
+	int loop_count = 0;
 	int gain_set = 3;
 	uint64_t lastSaveTime = 0;
 	uint64_t lastPollTime = 0;
@@ -45,6 +47,13 @@ namespace t_battery
 		// ic_reg.cell_channels can be zero and cause divide-by-zero later.
 		LTC6811_init_reg_limits(battery::IC_COUNT, bms_ic);
 		LTC6811_init_cfg(battery::IC_COUNT, bms_ic);
+
+		usb_serial_jtag_driver_config_t config = {
+			.tx_buffer_size = 1024,
+			.rx_buffer_size = 1024,
+		};
+
+		usb_serial_jtag_driver_install(&config);
 	}
 
 	void TBattery::check_and_set_faults()
@@ -198,6 +207,16 @@ namespace t_battery
 		}
 		// Check for user input
 		check_debugging_input();
+
+		if (loop_count++ % 100 == 0)
+		{
+			runCommand(3); // read cells
+		}
+
+		if (loop_count % 100 == 50)
+		{
+			runCommand(4); // print voltages
+		}
 	}
 
 	// ============== Battery reading and measurement functions ============== //
@@ -250,7 +269,7 @@ namespace t_battery
 		{
 			for (int cell_num = 0; cell_num < bms_ic[0].ic_reg.cell_channels; cell_num++)
 			{
-				battery_data.ics[current_ic].cell_voltages[cell_num] = battery::TO_VOLTAGE(bms_ic[current_ic].cells.c_codes[cell_num]); // TODO: convert all to true voltages upon read
+				battery_data.ics[current_ic].cell_voltages[cell_num] = (bms_ic[current_ic].cells.c_codes[cell_num]);
 				battery_data.sum_voltage += bms_ic[current_ic].cells.c_codes[cell_num];
 
 				if (bms_ic[current_ic].cells.c_codes[cell_num] < battery_data.min_voltage)

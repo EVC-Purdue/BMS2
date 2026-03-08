@@ -3,58 +3,61 @@
 
 #include "battery/modes.hpp"
 #include "esp_littlefs.h"
+#include <string.h>
+#include "wchar.h"
 
 namespace web
 {
 
 #include "logger/Web/index.html" // const char INDEX_HTML[] PROGMEM
+    void setupServer();
 
-    char *getIndexHtml();
+    bool checkCorsPreflight();
 
-    char *getName();
+    void handleName();
 
-    char *fullShutdown();
+    void handleFullShutdown();
 
-    char *forceDischargeEnable();
-    char *forceDischargeDisable();
+    void hangleForceDischargeEnable();
+    void handleForceDischargeDisable();
 
-    char *logDownload();
-    char *logDelete();
+    void handleLogDownload();
+    void handleLogDelete();
 
-    char *parameters();
-    char *acknowledge();
+    void handleParameters();
+    void handleAcknowledge();
 
-    char *readCells();
-    char *data();
+    void handleReadCells();
+    void handleData();
 
-    char *idle();
-    char *monitor();
-    char *balancing();
+    void handleIdle();
+    void handleMonitor();
+    void handleBalancing();
 
-    char *canMode();
+    void handleCanMode();
 
-    char *state();
+    void handleState();
     const char *printState(modes::Mode state);
 
-    char *fileRead(char *path);
+    bool handleFileRead(char *path);
     char *getContentType(char *filename);
 
-    char *saveData();
+    void saveData();
     char *generateLogLine();
-    void writeToFile(FILE *file);
+    void writeToFile(FILE &file);
 
     // Send/stream the HTML file that is embedded in the code
-    char *sendDefaultHTML();
+    void sendDefaultHTML();
     // Always send the embedded HTML file
-    char *handleDefault();
+    void handleDefault();
     // Prefer sending the HTML file from SPIFFS, if it exists otherwise send the embedded HTML
-    char *handleRoot();
+    void handleRoot();
     // Upload a new HTML file to SPIFFS
-    char *handleFrontend();
+    void handleFrontend();
 
-    char *handleFileUpload();
+    void handleFileUpload();
 
-    char *handleNotFound();
+    void handleNotFound();
 
 } // namespace web
 

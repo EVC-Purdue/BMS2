@@ -31,52 +31,213 @@
 #include <stdio.h>
 #include <sys/select.h>
 #include <fcntl.h>
+#include "driver/uart.h"
+#include "driver/usb_serial_jtag.h"
 
 #define ENABLED 1
 #define DISABLED 0
+#define consoleVersion 3
+
 // Continuation of t_battery.cpp
 namespace t_battery
 {
+#if consoleVersion == 1
     // Helper function to check if input is available
-    static bool console_available() {
+    static bool console_available()
+    {
         struct timeval tv = {0, 0};
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
-        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+        bool availible = select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+        if (availible)
+        {
+            printf("Console input is available\n");
+        }
+        return availible;
     }
-
     // Helper function to read an integer (blocking until newline)
-    static int console_read_int() {
+    static int console_read_int()
+    {
         char buf[32];
         int idx = 0;
         int c;
         // Simple line reader
-        while(idx < sizeof(buf)-1) {
+        while (idx < sizeof(buf) - 1)
+        {
             c = fgetc(stdin);
-            if(c == EOF) {
-                 vTaskDelay(pdMS_TO_TICKS(10));
-                 continue; 
+            if (c == EOF)
+            {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
             }
-            if(c == '\n' || c == '\r') {
-                if (idx == 0 && c == '\r') continue; // consume CR if empty?
-                if (idx > 0) break;
-                // if idx is 0, we might have just hit enter without typing number? 
+            if (c == '\n' || c == '\r')
+            {
+                if (idx == 0 && c == '\r')
+                    continue; // consume CR if empty?
+                if (idx > 0)
+                    break;
+                // if idx is 0, we might have just hit enter without typing number?
                 // Original code was tricky. Let's assume user types number then enter.
-                break; 
+                break;
             }
             buf[idx++] = (char)c;
         }
         buf[idx] = 0;
         return atoi(buf);
     }
-    
+
     // Helper function to read a char
-    static char console_getChar() {
+    static char console_getChar()
+    {
         int c = fgetc(stdin);
-        if (c == EOF) return 0;
+        if (c == EOF)
+            return 0;
         return (char)c;
     }
+
+#elif consoleVersion == 2
+
+    bool console_available()
+    {
+        size_t len;
+        uart_get_buffered_data_len(UART_NUM_0, &len);
+        return len > 0;
+    }
+
+    static int console_read_int()
+    {
+        char buf[32];
+        int idx = 0;
+        uint8_t c;
+
+        while (idx < sizeof(buf) - 1)
+        {
+            int len = uart_read_bytes(UART_NUM_0, &c, 1, pdMS_TO_TICKS(10));
+
+            if (len == 0)
+                continue;
+
+            if (c == '\n' || c == '\r')
+            {
+                if (idx == 0 && c == '\r')
+                    continue;
+
+                if (idx > 0)
+                    break;
+
+                break;
+            }
+
+            buf[idx++] = (char)c;
+        }
+
+        buf[idx] = 0;
+        return atoi(buf);
+    }
+
+    static char console_getChar()
+    {
+        uint8_t c;
+        int len = uart_read_bytes(UART_NUM_0, &c, 1, 0);
+
+        if (len <= 0)
+            return 0;
+
+        return (char)c;
+    }
+
+#elif consoleVersion == 3
+    static char serial_buffer[32] = {0};
+    static uint8_t serial_buffer_index = 0;
+
+    static bool console_available()
+    {
+        char c;
+
+        int len = usb_serial_jtag_read_bytes(&c, 1, 0);
+
+        if (len > 0)
+        {
+            // push back into a small buffer if you need it later
+            // or store it globally
+            serial_buffer[serial_buffer_index++] = c;
+            return true;
+        }
+
+        return false;
+    }
+
+    static char console_getChar()
+    {
+        if (serial_buffer_index > 0)
+        {
+            char c = serial_buffer[0];
+            // Shift the buffer left
+            memmove(serial_buffer, serial_buffer + 1, serial_buffer_index - 1);
+            serial_buffer_index--;
+            return c;
+        }
+        else
+        {
+            // No data in buffer, try reading directly
+            char c;
+            int len = usb_serial_jtag_read_bytes(&c, 1, 0);
+            if (len > 0)
+            {
+                return c;
+            }
+        }
+        return 0; // No data available
+    }
+
+    static int console_read_int()
+    {
+        char buf[32];
+        int idx = 0;
+        uint8_t c;
+
+        while (idx < sizeof(buf) - 1)
+        {
+            int len = 0;
+            if (serial_buffer_index > 0)
+            {
+                c = serial_buffer[0];
+                // Shift the buffer left
+                memmove(serial_buffer, serial_buffer + 1, serial_buffer_index - 1);
+                serial_buffer_index--;
+                len = 1;
+            }
+            else
+            {
+                len = usb_serial_jtag_read_bytes(&c, 1, pdMS_TO_TICKS(10));
+            }
+
+            if (len == 0)
+                continue;
+
+            if (c == '\n' || c == '\r')
+            {
+                if (idx == 0 && c == '\r')
+                    continue;
+
+                if (idx > 0)
+                    break;
+
+                break;
+            }
+
+            buf[idx++] = (char)c;
+
+            // optional echo so terminal shows typing
+            usb_serial_jtag_write_bytes((const char *)&c, 1, 0);
+        }
+
+        buf[idx] = 0;
+        return atoi(buf);
+    }
+
+#endif
 
     inline void checkError(int error)
     {
@@ -213,6 +374,7 @@ namespace t_battery
 
     void TBattery::printCells(uint8_t datalog_en)
     {
+        printf("TEST\n");
         for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
             if (datalog_en == 0)
@@ -225,7 +387,7 @@ namespace t_battery
                     printf(" C");
                     printf("%d", i + 1);
                     printf(":");
-                    printf("%.4f", this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001);
+                    printf("%.4f", battery::TO_VOLTAGE(this->battery_data.ics[current_ic].cell_voltages[i]));
                     printf(",");
                 }
                 printf("\n");
@@ -235,7 +397,7 @@ namespace t_battery
                 printf("Cells, ");
                 for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
                 {
-                    printf("%.4f", this->battery_data.ics[current_ic].cell_voltages[i] * 0.0001);
+                    printf("%.4f", battery::TO_VOLTAGE(this->battery_data.ics[current_ic].cell_voltages[i]));
                     printf(",");
                 }
             }
@@ -263,11 +425,11 @@ namespace t_battery
 
     void TBattery::check_debugging_input()
     {
-        if (unlikely(console_available()))
+        if (console_available())
         {
             uint32_t user_command;
             user_command = console_read_int(); // Read the user command
-            printf("%" PRIu32, user_command);
+            printf("Recieved command %" PRIu32, user_command);
             printf("\n");
 
             runCommand(user_command);
@@ -311,6 +473,7 @@ namespace t_battery
         case 4: // Read Cell Voltage Registers
             wakeup_sleep(battery::IC_COUNT);
             error = LTC6811_rdcv(0, battery::IC_COUNT, bms_ic); // Set to read back all cell voltage registers
+            printf("ERROR CODE: %d", error);
             checkError(error);
             printCells(DISABLED);
             break;
