@@ -8,6 +8,7 @@
 
 namespace web
 {
+    // cache LogLine from t_logger and pull data from it
 
 #include "logger/Web/index.html" // const char INDEX_HTML[] PROGMEM
     void setupServer();

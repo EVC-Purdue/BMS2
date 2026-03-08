@@ -32,6 +32,7 @@ namespace t_battery
 	uint64_t lastSaveTime = 0;
 	uint64_t lastPollTime = 0;
 	uint64_t lastStateTime = 0;
+	uint64_t lastSelfTestTime = 0;
 
 	TBattery::TBattery(uint32_t period)
 		: task_base::TaskBase(period),
@@ -174,6 +175,12 @@ namespace t_battery
 			}
 		}
 
+		if (currentTime - lastSelfTestTime > SELF_TEST_TIME * 1000)
+		{
+			lastSelfTestTime = currentTime;
+			performHWSelfTest();
+		}
+
 		// uint16_t logTime = 1000 * parameters.log_inter; // parameters.logSpeed in ms, convert to microseconds // unused?
 		if (mode == modes::Mode::MONITORING && currentTime - lastSaveTime > parameters.log_inter)
 		{
@@ -208,12 +215,28 @@ namespace t_battery
 		// Check for user input
 		check_debugging_input();
 
-		if (loop_count++ % 100 == 0)
+		if (loop_count++ % 100 == 0 && false)
 		{
-			runCommand(3); // read cells
+			// runCommand(3); // read cells
+
+			for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
+			{
+				printf("\n IC ");
+				printf("%d", current_ic + 1);
+				printf(", ");
+				for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
+				{
+					printf(" C");
+					printf("%d", i + 1);
+					printf(":");
+					printf("%.4f", battery::TO_VOLTAGE(this->battery_data.ics[current_ic].cell_voltages[i]));
+					printf(",");
+				}
+				printf("\n");
+			}
 		}
 
-		if (loop_count % 100 == 50)
+		if (loop_count % 100 == 50 && false)
 		{
 			runCommand(4); // print voltages
 		}
@@ -566,7 +589,7 @@ namespace t_battery
 		q_logger::msg::LogLine msg = {};
 		msg.timestamp = esp_timer_get_time();
 		for (size_t i = 0; i < battery::IC_COUNT; i++)
-		{
+		{ // Copy cell voltages
 			memcpy(
 				&msg.voltages[i * battery::CELL_COUNT_PER_IC],
 				this->battery_data.ics[i].cell_voltages,

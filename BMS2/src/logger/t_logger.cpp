@@ -154,6 +154,8 @@ namespace t_logger
                                                      this->log_line_buffer,
                                                      written);
                                                  this->write_buffer_index += written;
+
+                                                 printf("Logged data: %s", this->log_line_buffer); // Debug print
                                              },
                                              [this](const q_logger::msg::ReadStart &_m)
                                              {

@@ -9,7 +9,6 @@
 #include "logger/t_logger.hpp"
 #include "logger/q_logger.hpp"
 #include "util/err.hpp"
-#include "esp_littlefs.h"
 #include <unistd.h>
 #include "hardware/pins.hpp"
 #include "hardware/gpio.hpp"
@@ -36,19 +35,6 @@ extern "C" void app_main()
     // Hardware configuration and setup
     hardware::configure(&gs_spi_handle); // GPIO, SPI, LEDC, SPIFFS
     hardware::setup_initial_gpio_states();
-
-    // Configure and mount LittleFS (file system)
-    esp_vfs_littlefs_conf_t conf = {
-        .base_path = "/littlefs",
-        .partition_label = "storage",
-        .format_if_mount_failed = true,
-        .dont_mount = false,
-    };
-    esp_err_t littlefs_ret = esp_vfs_littlefs_register(&conf);
-    if (littlefs_ret != ESP_OK)
-    {
-        ESP_LOGE("main", "Failed to initialize LittleFS: %s", esp_err_to_name(littlefs_ret));
-    }
 
     printf("Hardware configured, starting tasks...\n");
     // Queue initialization

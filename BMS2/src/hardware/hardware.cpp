@@ -4,10 +4,11 @@
 #include "driver/ledc.h"
 #include "esp_spiffs.h"
 #include "esp_err.h"
-
 #include "hardware/pins.hpp"
 #include "hardware/spi.hpp"
 #include "hardware/hardware.hpp"
+#include "esp_littlefs.h"
+#include "esp_log.h"
 
 namespace hardware {
 
@@ -94,6 +95,23 @@ void configure(spi_device_handle_t* spi_handle) {
     configure_spi(spi_handle);
     // configure_ledc();
     // configure_spiffs();
+
+
+    // Configure and mount LittleFS (file system)
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = "/littlefs",
+        .partition_label = "storage",
+        .partition = nullptr, // unused
+        .format_if_mount_failed = true,
+        .read_only = false,
+        .dont_mount = false,
+        .grow_on_mount = false,
+    };
+    esp_err_t littlefs_ret = esp_vfs_littlefs_register(&conf);
+    if (littlefs_ret != ESP_OK)
+    {
+        ESP_LOGE("main", "Failed to initialize LittleFS: %s", esp_err_to_name(littlefs_ret));
+    }
 }
 
 void setup_initial_gpio_states() {

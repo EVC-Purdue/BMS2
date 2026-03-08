@@ -24,6 +24,7 @@ namespace t_battery
     const uint64_t MEASUREMENT_LOOP_TIME = 100; // milliseconds(mS)
     const uint64_t BALANCE_LOOP_TIME = 10000;   // milliseconds(mS)
     const uint64_t POLL_TIME = 1500;            // milliseconds(mS)
+    const uint64_t SELF_TEST_TIME = 10000;      // milliseconds(mS)
 
     // ADC Command Configurations
     const uint8_t ADC_OPT = ADC_OPT_DISABLED;         // See LTC6811_daisy.h for Options
@@ -91,6 +92,7 @@ namespace t_battery
         void printStat();
         void printAux(uint8_t datalog_en);
         void printRxConfig();
+        void performHWSelfTest();
 
     public:
         TBattery(uint32_t period);
