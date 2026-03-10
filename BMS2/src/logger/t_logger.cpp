@@ -78,13 +78,13 @@ namespace t_logger
             return;
         }
 
-        // Write buffer to file
-        int written = std::fprintf(file, "%.*s", static_cast<int>(this->write_buffer_index), this->write_buffer);
-        bool write_success = (written == static_cast<int>(this->write_buffer_index));
+        // Write exact bytes from the accumulation buffer.
+        size_t written = std::fwrite(this->write_buffer, 1, this->write_buffer_index, file);
+        bool write_success = (written == this->write_buffer_index);
 
         // Close file before checking success
         std::fclose(file);
-        UTIL_CHECK_REQUIRE(write_success);
+        UTIL_CHECK_REQUIRE(write_success); // Should it hard fail if the write didn't complete fully?
 
         this->write_buffer_index = 0; // Reset buffer index after writing
     }
@@ -100,30 +100,51 @@ namespace t_logger
         {
             std::visit(util::OverloadedVisit{[this](const q_logger::msg::LogLine &m)
                                              {
-                                                 // Safety: assume log line fits in buffer
-                                                 int written = std::snprintf(
-                                                     this->log_line_buffer,
-                                                     LOG_LINE_MAX_SIZE,
-                                                     "%lld,", m.timestamp);
+                                                 size_t written = 0;
+                                                 bool truncated = false;
+
+                                                 auto append = [&](const char *fmt, auto... args)
+                                                 {
+                                                     if (truncated || written >= LOG_LINE_MAX_SIZE)
+                                                     {
+                                                         truncated = true;
+                                                         return;
+                                                     }
+
+                                                     const size_t remaining = LOG_LINE_MAX_SIZE - written;
+                                                     int n = std::snprintf(
+                                                         this->log_line_buffer + written,
+                                                         remaining,
+                                                         fmt,
+                                                         args...);
+
+                                                     if (n < 0)
+                                                     {
+                                                         truncated = true;
+                                                         return;
+                                                     }
+
+                                                     if (static_cast<size_t>(n) >= remaining)
+                                                     {
+                                                         // snprintf truncated. Keep the current valid prefix.
+                                                         written = LOG_LINE_MAX_SIZE - 1;
+                                                         truncated = true;
+                                                         return;
+                                                     }
+
+                                                     written += static_cast<size_t>(n);
+                                                 };
+
+                                                 append("%lld,", m.timestamp);
                                                  for (size_t i = 0; i < battery::IC_COUNT * battery::CELL_COUNT_PER_IC; i++)
                                                  {
-                                                     written += std::snprintf(
-                                                         this->log_line_buffer + written,
-                                                         LOG_LINE_MAX_SIZE - written,
-                                                         "%lu,",
-                                                         m.voltages[i]);
+                                                     append("%lu,", m.voltages[i]);
                                                  }
                                                  for (size_t i = 0; i < battery::THERM_COUNT; i++)
                                                  {
-                                                     written += std::snprintf(
-                                                         this->log_line_buffer + written,
-                                                         LOG_LINE_MAX_SIZE - written,
-                                                         "%.2f,",
-                                                         m.temps.therms[i]);
+                                                     append("%.2f,", m.temps.therms[i]);
                                                  }
-                                                 written += std::snprintf(
-                                                     this->log_line_buffer + written,
-                                                     LOG_LINE_MAX_SIZE - written,
+                                                 append(
                                                      "%.2f,%.2f,%.2f,%.2f,",
                                                      m.temps.fet,
                                                      m.temps.bal_bot,
@@ -132,16 +153,15 @@ namespace t_logger
                                                  for (size_t i = 0; i < faults::WarningFault::WARNING_FAULTS_END; i++)
                                                  {
                                                      bool fault_active = (m.faults & (1 << i)) != 0;
-                                                     written += std::snprintf(
-                                                         this->log_line_buffer + written,
-                                                         LOG_LINE_MAX_SIZE - written,
-                                                         "%d",
-                                                         fault_active ? 1 : 0);
+                                                     append("%d", fault_active ? 1 : 0);
                                                  }
-                                                 written += std::snprintf(
-                                                     this->log_line_buffer + written,
-                                                     LOG_LINE_MAX_SIZE - written,
-                                                     "\n");
+                                                 append("\n");
+
+                                                 if (truncated)
+                                                 {
+                                                     ESP_LOGE(TAG, "Dropping truncated log line (max=%zu)", LOG_LINE_MAX_SIZE);
+                                                     return;
+                                                 }
 
                                                  // If the log line doesn't fit in the remaining buffer, flush first
                                                  if (this->write_buffer_index + written > WRITE_BUFFER_SIZE)
@@ -155,7 +175,7 @@ namespace t_logger
                                                      written);
                                                  this->write_buffer_index += written;
 
-                                                 printf("Logged data: %s", this->log_line_buffer); // Debug print
+                                                  printf("Debug: Logged data: %s\n", this->log_line_buffer); // Debug print
                                              },
                                              [this](const q_logger::msg::ReadStart &_m)
                                              {

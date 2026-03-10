@@ -42,7 +42,7 @@
 // Continuation of t_battery.cpp
 namespace t_battery
 {
-    inline void checkError(int error)
+    void TBattery::checkError(int error)
     {
         if (error == -1)
         {
@@ -465,24 +465,24 @@ namespace t_battery
         uint8_t error = LTC6811_run_cell_adc_st(CELL, ADC_CONVERSION_MODE, bms_ic);
         if (error != 0)
         {
-            printf("%d", error);
-            printf(" : errors detected in Digital Filter and CELL Memory \n\n");
+            printf("\n%d", error);
+            printf(" : errors detected in Digital Filter and CELL Memory \n");
         }
 
         wakeup_sleep(battery::IC_COUNT);
         error = LTC6811_run_cell_adc_st(AUX, ADC_CONVERSION_MODE, bms_ic);
         if (error != 0)
         {
-            printf("%d", error);
-            printf(" : errors detected in Digital Filter and AUX Memory \n\n");
+            printf("\n%d", error);
+            printf(" : errors detected in Digital Filter and AUX Memory \n");
         }
 
         wakeup_sleep(battery::IC_COUNT);
         error = LTC6811_run_cell_adc_st(STAT, ADC_CONVERSION_MODE, bms_ic);
         if (error != 0)
         {
-            printf("%d", error);
-            printf(" : errors detected in Digital Filter and STAT Memory \n\n");
+            printf("\n%d", error);
+            printf(" : errors detected in Digital Filter and STAT Memory \n");
         }
     }
 

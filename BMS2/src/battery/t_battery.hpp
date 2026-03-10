@@ -93,6 +93,7 @@ namespace t_battery
         void printAux(uint8_t datalog_en);
         void printRxConfig();
         void performHWSelfTest();
+        void checkError(int error);
 
     public:
         TBattery(uint32_t period);

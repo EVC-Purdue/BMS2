@@ -24,6 +24,7 @@
 #include "t_battery.hpp"
 #include <stdio.h>
 #include "driver/usb_serial_jtag.h"
+#include "driver/gpio.h"
 
 namespace t_battery
 {
@@ -214,32 +215,6 @@ namespace t_battery
 		}
 		// Check for user input
 		check_debugging_input();
-
-		if (loop_count++ % 100 == 0 && false)
-		{
-			// runCommand(3); // read cells
-
-			for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
-			{
-				printf("\n IC ");
-				printf("%d", current_ic + 1);
-				printf(", ");
-				for (int i = 0; i < battery::CELL_COUNT_PER_IC; i++)
-				{
-					printf(" C");
-					printf("%d", i + 1);
-					printf(":");
-					printf("%.4f", battery::TO_VOLTAGE(this->battery_data.ics[current_ic].cell_voltages[i]));
-					printf(",");
-				}
-				printf("\n");
-			}
-		}
-
-		if (loop_count % 100 == 50 && false)
-		{
-			runCommand(4); // print voltages
-		}
 	}
 
 	// ============== Battery reading and measurement functions ============== //
@@ -324,12 +299,9 @@ namespace t_battery
 		LTC6811_pollAdc();
 		wakeup_idle(battery::IC_COUNT);
 		error = LTC6811_rdcv(0, battery::IC_COUNT, bms_ic);
-		if (unlikely(error))
-		{
-			// Handle error (e.g., log it, set fault flags, etc.)
-			printf("A PEC error was detected in the received data");
-		}
+		checkError(error);
 	}
+
 	void TBattery::balanceCells()
 	{
 		clear_discharge(battery::IC_COUNT, bms_ic);
@@ -379,7 +351,7 @@ namespace t_battery
 					battery_data.ics[current_ic].discharge[i] = false;
 				}
 
-				int sortedCells[12];
+				int sortedCells[battery::CELL_COUNT_PER_IC];
 				for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++)
 				{
 					sortedCells[i] = i;
@@ -406,7 +378,7 @@ namespace t_battery
 						continue;
 					}
 
-					for (int cell = i; cell < 12 - 1; cell++)
+					for (int cell = i; cell < battery::CELL_COUNT_PER_IC - 1; cell++)
 					{
 						// if cells are next to each other on the bms remove. no adjectent cells can be balanced at a time
 						if (sortedCells[i] + 1 == sortedCells[cell + 1])
@@ -421,14 +393,14 @@ namespace t_battery
 					}
 				}
 
-				for (int i = 0, count = 0; count < MAX_BALANCE_COUNT && i < 12; i++)
+				for (int i = 0, count = 0; count < MAX_BALANCE_COUNT && i < battery::CELL_COUNT_PER_IC; i++)
 				{
 					if (sortedCells[i] != -1 &&
 						(packToSort->cell_voltages[sortedCells[i]] > battery_data.ics[current_ic].avg_voltage + 0.001 / 0.0001 ||
 						 packToSort->cell_voltages[sortedCells[i]] > battery_data.avg_voltage + 0.001 / 0.0001))
 					{ // 0.01 V above average.
-						printf("Discharging: %d\n", 12 * current_ic + sortedCells[i] + 1);
-						LTC6811_set_discharge(12 * (1 - current_ic) + sortedCells[i] + 1, battery::IC_COUNT, bms_ic);
+						printf("Discharging: %d\n", battery::CELL_COUNT_PER_IC * current_ic + sortedCells[i] + 1);
+						LTC6811_set_discharge(battery::CELL_COUNT_PER_IC * (1 - current_ic) + sortedCells[i] + 1, battery::IC_COUNT, bms_ic);
 						for (int j = 0; j < battery::CELL_COUNT_PER_IC; j++)
 						{
 							battery_data.ics[current_ic].discharge[j] =
@@ -453,10 +425,7 @@ namespace t_battery
 		// vtaskDelay(pdMS_TO_TICKS(100));
 		int error = LTC6811_rdaux(0, battery::IC_COUNT, bms_ic); // Set to read back all aux registers
 
-		if (unlikely(error))
-		{
-			printf("A PEC error was detected in the received data in readTemperatures");
-		}
+		checkError(error);
 
 		battery_data.temps.therms[0] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM1 - 1] * 0.0001);
 		battery_data.temps.therms[1] = cellTemp(bms_ic[0].aux.a_codes[pins::LTC1::THERM2 - 1] * 0.0001);

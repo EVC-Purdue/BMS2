@@ -24,7 +24,7 @@ constexpr const char* LOG_FILE_PATH = "/littlefs/log.csv";
 constexpr size_t SPIFFS_RECHECK_USAGE_WRITES_COUNT = 20; // Number of writes after which to recheck SPIFFS usage
 
 constexpr size_t WRITE_BUFFER_SIZE = 512; // Size of buffer for writing log lines
-constexpr size_t LOG_LINE_MAX_SIZE = 120; // Maximum size of a single log line. This MUST be big enough to hold one full log line.
+constexpr size_t LOG_LINE_MAX_SIZE = 320; // Maximum size of a single log line. This MUST be big enough to hold one full log line.
 
 
 

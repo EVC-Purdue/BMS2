@@ -68,13 +68,14 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "stdint.h"
 #include "LTC681x.h"
 #include "LTC6811.h"
+#include "battery/battery.hpp"
 
 
 void LTC6811_init_reg_limits(uint8_t total_ic, cell_asic ic[])
 {
   for (uint8_t cic=0; cic<total_ic; cic++)
   {
-    ic[cic].ic_reg.cell_channels=12;
+    ic[cic].ic_reg.cell_channels=battery::CELL_COUNT_PER_IC;
     ic[cic].ic_reg.stat_channels=4;
     ic[cic].ic_reg.aux_channels=6;
     ic[cic].ic_reg.num_cv_reg=4;
@@ -397,14 +398,14 @@ void LTC6811_set_discharge(int Cell, uint8_t total_ic, cell_asic ic[])
     {
       ic[current_ic].config.tx_data[4] = ic[current_ic].config.tx_data[4] | (1<<(Cell-1));
     }
-    else if (Cell < 13)
+    else if (Cell < battery::CELL_COUNT_PER_IC + 1)
     {
       ic[current_ic].config.tx_data[5] = ic[current_ic].config.tx_data[5] | (1<<(Cell-9));
     }
     else
     {
       // next IC
-      Cell -=12;
+      Cell -= battery::CELL_COUNT_PER_IC;
     }
 	
   }
@@ -445,7 +446,7 @@ void LTC6811_max_min(uint8_t total_ic, cell_asic ic_cells[],
 {
   for (int j=0; j < total_ic; j++)
   {
-    for (int i = 0; i< 12; i++)
+    for (int i = 0; i< battery::CELL_COUNT_PER_IC; i++)
     {
       if (ic_cells[j].cells.c_codes[i]>ic_max[j].cells.c_codes[i])ic_max[j].cells.c_codes[i]=ic_cells[j].cells.c_codes[i];
       else if (ic_cells[j].cells.c_codes[i]<ic_min[j].cells.c_codes[i])ic_min[j].cells.c_codes[i]=ic_cells[j].cells.c_codes[i];

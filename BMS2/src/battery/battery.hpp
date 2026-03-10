@@ -1,7 +1,9 @@
 #ifndef BATTERY_HPP
 #define BATTERY_HPP
 
+#include <cstddef>
 #include <cstdint>
+#include "stdint.h"
 
 namespace battery
 {

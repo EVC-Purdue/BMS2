@@ -39,6 +39,7 @@ Copyright 2015 Linear Technology Corp. (LTC)
 #ifndef LTC681X_H
 #define LTC681X_H
 #include <stdint.h>
+#include "battery/battery.hpp"
 
 #define LINDUINO
 
@@ -522,7 +523,7 @@ void LTC681x_set_cfgr(uint8_t nIC,
                       bool refon,
                       bool adcopt,
                       bool gpio[5],
-                      bool dcc[12]);
+                      bool dcc[battery::CELL_COUNT_PER_IC]);
 
 /*! Helper function to turn the refon bit HIGH or LOW*/
 void LTC681x_set_cfgr_refon(uint8_t nIC,

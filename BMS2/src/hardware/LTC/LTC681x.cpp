@@ -44,6 +44,7 @@ Copyright 2017 Linear Technology Corp. (LTC)
 #include "hardware/hardware.hpp"
 #include "hardware/gpio.hpp"
 #include "hardware/spi.hpp"
+#include "battery/battery.hpp"
 
 
 #ifdef LINDUINO
@@ -1472,7 +1473,7 @@ void LTC681x_init_cfg(uint8_t total_ic, cell_asic ic[]) {
 }
 
 //Helper function to set CFGR variable
-void LTC681x_set_cfgr(uint8_t nIC, cell_asic ic[], bool refon, bool adcopt, bool gpio[5],bool dcc[12])
+void LTC681x_set_cfgr(uint8_t nIC, cell_asic ic[], bool refon, bool adcopt, bool gpio[5],bool dcc[battery::CELL_COUNT_PER_IC])
 {
   LTC681x_set_cfgr_refon(nIC,ic,refon);
   LTC681x_set_cfgr_adcopt(nIC,ic,adcopt);
@@ -1505,7 +1506,7 @@ void LTC681x_set_cfgr_gpio(uint8_t nIC, cell_asic ic[],bool gpio[5])
 }
 
 //Helper function to control discharge
-void LTC681x_set_cfgr_dis(uint8_t nIC, cell_asic ic[],bool dcc[12])
+void LTC681x_set_cfgr_dis(uint8_t nIC, cell_asic ic[],bool dcc[battery::CELL_COUNT_PER_IC])
 {
   for (int i =0; i<8; i++)
   {

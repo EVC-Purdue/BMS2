@@ -116,7 +116,7 @@ void configure(spi_device_handle_t* spi_handle) {
 
 void setup_initial_gpio_states() {
     gpio_set_level(pins::ESP::PWR_EN, 1);
-    gpio_set_level(pins::ESP::LED, 1);
+    gpio_set_level(pins::ESP::LED, 0); // on is low
     gpio_set_level(pins::ESP::SS_SWITCH, 0);
     gpio_set_level(pins::ESP::CONTACTOR, 1);
     gpio_set_level(pins::ESP::GS0, 1);
