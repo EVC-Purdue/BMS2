@@ -21,10 +21,15 @@ namespace msg {
     struct SetMode {
         modes::Mode mode;
     };
+
+    struct GenerateLogLine {
+        // No data needed, just a trigger
+    };
 } // namespace msg
 
 using Message = std::variant<
     msg::SetMode,
+    msg::GenerateLogLine,
     params::msg::Message,
     faults::msg::ClearFault
 >;

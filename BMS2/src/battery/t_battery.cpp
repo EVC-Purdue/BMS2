@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include "driver/usb_serial_jtag.h"
 #include "driver/gpio.h"
+#include "battery/on_err.hpp"
 
 namespace t_battery
 {
@@ -112,6 +113,10 @@ namespace t_battery
 										  this->mode = sm.mode;
 										  // Handle mode change as necessary
 									  },
+									  [this](const q_battery::msg::GenerateLogLine &gll)
+									  {
+										  this->generateLogLine();
+									  },
 									  [this](const params::msg::Message &p_msg)
 									  {
 										  this->parameters.set_parameter(p_msg);
@@ -172,7 +177,7 @@ namespace t_battery
 
 			if ((mode == modes::Mode::MONITORING || mode == modes::Mode::IDLE) && checkBatteryProblems())
 			{
-				digitalWrite(pins::ESP::CONTACTOR, LOW);
+				on_err::handle_critical_error("Critical battery fault detected");
 			}
 		}
 

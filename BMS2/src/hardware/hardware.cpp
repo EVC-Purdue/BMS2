@@ -9,6 +9,7 @@
 #include "hardware/hardware.hpp"
 #include "esp_littlefs.h"
 #include "esp_log.h"
+#include "hardware/CAN.hpp"
 
 namespace hardware {
 
@@ -95,6 +96,7 @@ void configure(spi_device_handle_t* spi_handle) {
     configure_spi(spi_handle);
     // configure_ledc();
     // configure_spiffs();
+    can::init();
 
 
     // Configure and mount LittleFS (file system)
