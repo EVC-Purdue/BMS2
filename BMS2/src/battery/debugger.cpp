@@ -34,6 +34,7 @@
 #include "driver/uart.h"
 #include "driver/usb_serial_jtag.h"
 #include "util/serial.hpp"
+#include "hardware/CAN.hpp"
 
 #define ENABLED 1
 #define DISABLED 0
@@ -219,8 +220,10 @@ namespace t_battery
         printf("Start Stat Voltage Conversion: 7  | Run ADC overlap Test: 17\n");
         printf("Read Stat Voltages: 8             | Run Digital Redundancy Test: 18\n");
         printf("loop Measurements: 9              | Run Open Wire Test: 19\n");
-        printf("Read PEC Errors: 10               |  Loop measurements with datalog output: 20\n");
-        printf("States, MONITOR: 21, Charging: 22, Delete Datastore: 30\n");
+        printf("Read PEC Errors: 10               | Loop measurements with datalog output: 20\n");
+        printf("States, MONITOR: 21, Balancing: 22, Idle: 23\n");
+        printf("Request Charging: 25              | Get charger status: 26\n");
+        printf("Delete Datastore: 30\n");
         printf("Please enter command: \n");
         printf("\n");
     }
@@ -428,6 +431,7 @@ namespace t_battery
             printMenu();
             break;
 
+        case 0:
         case 'm': // prints menu
             printMenu();
             break;
@@ -437,6 +441,35 @@ namespace t_battery
             break;
         case 22:
             mode = modes::Mode::BALANCING;
+            break;
+        case 23:
+            mode = modes::Mode::IDLE;
+            break;
+
+        case 25:
+            float voltage;
+            float current;
+            printf("Enter voltage to request (default is %f): \n", parameters.v_can_charge);
+            scanf("%f", &voltage);
+            printf("Enter current to request (default is %f): \n", parameters.i_can_charge);
+            scanf("%f", &current);
+            can::requestCharging(voltage, current, true);
+            break;
+
+        case 26:
+            can::ChargerStatus status;
+            if (can::receiveChargerStatus(status))
+            {
+                printf("Charger Status:\n");
+                printf("Voltage: %.2f V\n", status.outputVoltage);
+                printf("Current: %.2f A\n", status.outputCurrent);
+                printf("Is Charging: %s\n", status.chargingActive ? "Yes" : "No");
+                printf("Has Fault: %d\n", status.hasFault);
+            }
+            else
+            {
+                printf("No charger status received. Is the charger connected?\n");
+            }
             break;
 
         case 30:

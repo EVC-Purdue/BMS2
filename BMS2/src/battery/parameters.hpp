@@ -27,8 +27,8 @@ constexpr float PARAMETER_T_MAX_BAL = 50.0f;   // max temp for balancing
 constexpr float PARAMETER_T_RESET_BAL = 40.0f; // reset temp for balancing (once it goes below this we can balance again)
 constexpr uint32_t PARAMETER_LOG_INTER = 1000; // How often to save to log in monitor state (ms). Should be multiple of t_battery::TASK_PERIOD_MS
 constexpr bool PARAMETER_DELETE_LOG = false;   // delete log to make space if full
-// constexpr float PARAMETER_V_CAN_CHARGE = 100.8f; // Total voltage to charge to. Sent over CAN
-// constexpr float PARAMETER_I_CAN_CHARGE = 10.0f;  // Current to charge at. Sent over CAN
+constexpr float PARAMETER_V_CAN_CHARGE = 100.8f; // Total voltage to charge to. Sent over CAN
+constexpr float PARAMETER_I_CAN_CHARGE = 10.0f;  // Current to charge at. Sent over CAN
 constexpr float PARAMETER_P_MAX = 14000.0f; // 14kW max power
 
 constexpr size_t KEY_CHAR_COUNT = 16; // Number of chars that could be used for the key string
@@ -94,8 +94,8 @@ class Parameters {
 
         float p_max = PARAMETER_P_MAX;
 
-        // float v_can_charge = PARAMETER_V_CAN_CHARGE;
-        // float i_can_charge = PARAMETER_I_CAN_CHARGE;
+        const float v_can_charge = PARAMETER_V_CAN_CHARGE;
+        const float i_can_charge = PARAMETER_I_CAN_CHARGE;
 
         // Later TODO: load params from SPIFFS
 

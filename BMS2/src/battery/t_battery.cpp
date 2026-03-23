@@ -26,9 +26,13 @@
 #include "driver/usb_serial_jtag.h"
 #include "driver/gpio.h"
 #include "battery/on_err.hpp"
+#include "hardware/CAN.hpp"
 
 namespace t_battery
 {
+	constexpr float AUTO_CHARGE_CURRENT_MARGIN_A = 1.0f;
+	constexpr uint8_t AUTO_CHARGE_LED_DISPLAY = 0x05; // Green on
+
 	int loop_count = 0;
 	int gain_set = 3;
 	uint64_t lastSaveTime = 0;
@@ -218,6 +222,9 @@ namespace t_battery
 		{
 			this->iters_without_log++;
 		}
+
+		can::autoRequestChargingOnPlugIn(this->parameters.v_can_charge, this->parameters.i_can_charge);
+
 		// Check for user input
 		check_debugging_input();
 	}

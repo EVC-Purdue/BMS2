@@ -2,6 +2,7 @@
 #define CAN_HPP
 
 #include <cstdint>
+#include "freertos/FreeRTOS.h"
 
 namespace can
 {
@@ -31,15 +32,18 @@ namespace can
         bool chargingActive;
         float outputVoltage;
         float outputCurrent;
-        int16_t temperature;    // Temp of charger in °C (range −40–150)
+        int16_t temperature; // Temp of charger in °C (range −40–150)
     };
 
     void init();
 
     // Charger communication API
-    void receiveChargerStatus(ChargerStatus &status);
+    bool receiveChargerStatus(ChargerStatus &status, TickType_t timeoutTicks = 0);
     void requestCharging(float voltage, float current, bool startCharging, uint8_t ledDisplay = 0);
     void stopCharging();
+
+    // Returns true when a charger was newly detected and a charge request was transmitted.
+    bool autoRequestChargingOnPlugIn(float voltage, float current, uint8_t ledDisplay = 0, TickType_t rxTimeoutTicks = 0);
 }
 
 #endif // CAN_HPP
