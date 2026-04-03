@@ -27,6 +27,7 @@
 #include "driver/gpio.h"
 #include "battery/on_err.hpp"
 #include "hardware/CAN.hpp"
+#include "battery/state_cache.hpp"
 
 namespace t_battery
 {
@@ -48,6 +49,9 @@ namespace t_battery
 		  fault_manager({}),
 		  new_faults(false),
 		  any_bypassed(false),
+		  balTempBotTriggered(false),
+		  balTempTopTriggered(false),
+		  tDiffTriggered(false),
 		  iters_without_log(0)
 	{
 		// Required LTC data structure initialization. Without this,
@@ -102,6 +106,7 @@ namespace t_battery
 		}
 
 		this->new_faults = this->fault_manager.new_faults_present();
+		this->tDiffTriggered = this->fault_manager.get_current_fault(faults::WarningFault::TEMPS_IMBALANCE);
 		this->fault_manager.update_previous_faults();
 	}
 
@@ -224,6 +229,8 @@ namespace t_battery
 		}
 
 		can::autoRequestChargingOnPlugIn(this->parameters.v_can_charge, this->parameters.i_can_charge);
+
+		this->publish_snapshot(currentTime);
 
 		// Check for user input
 		check_debugging_input();
@@ -581,5 +588,40 @@ namespace t_battery
 		msg.current = this->battery_data.current;
 		msg.faults = this->fault_manager.get_current_set_faults();
 		xQueueSend(q_logger::g_logger_queue, &msg, 0);
+	}
+
+	void TBattery::publish_snapshot(int64_t timestamp_us)
+	{
+		battery_state_cache::Snapshot snapshot = {};
+		snapshot.timestamp_us = timestamp_us;
+		snapshot.mode = this->mode;
+		snapshot.battery_data = this->battery_data;
+
+		snapshot.parameters.bypass = this->parameters.bypass;
+		snapshot.parameters.v_bypass = this->parameters.v_bypass;
+		snapshot.parameters.v_min = this->parameters.v_min;
+		snapshot.parameters.v_max = this->parameters.v_max;
+		snapshot.parameters.v_min_avg = this->parameters.v_min_avg;
+		snapshot.parameters.v_max_avg = this->parameters.v_max_avg;
+		snapshot.parameters.v_diff = this->parameters.v_diff;
+		snapshot.parameters.t_min = this->parameters.t_min;
+		snapshot.parameters.t_max = this->parameters.t_max;
+		snapshot.parameters.t_diff = this->parameters.t_diff;
+		snapshot.parameters.t_max_bal = this->parameters.t_max_bal;
+		snapshot.parameters.t_reset_bal = this->parameters.t_reset_bal;
+		snapshot.parameters.log_inter = this->parameters.log_inter;
+		snapshot.parameters.delete_log = this->parameters.delete_log;
+		snapshot.parameters.v_can_charge = this->parameters.v_can_charge;
+		snapshot.parameters.i_can_charge = this->parameters.i_can_charge;
+
+		snapshot.faults = this->fault_manager.get_current_set_faults();
+		snapshot.persistent_faults = this->fault_manager.get_persistent_faults();
+
+		snapshot.any_bypassed = this->any_bypassed;
+		snapshot.t_diff_triggered = this->tDiffTriggered;
+		snapshot.bal_temp_bot_triggered = this->balTempBotTriggered;
+		snapshot.bal_temp_top_triggered = this->balTempTopTriggered;
+
+		battery_state_cache::publish(snapshot);
 	}
 } // namespace t_battery

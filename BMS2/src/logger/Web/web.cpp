@@ -1,4 +1,4 @@
-#if false // disable entire file for now, as it's not being used and is incomplete
+#if true // disable entire file for now, as it's not being used and is incomplete
 
 #include "logger/Web/web.hpp"
 #include "stdint.h"

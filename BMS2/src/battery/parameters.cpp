@@ -75,6 +75,14 @@ namespace params
         {
             this->p_max = value;
         }
+        else if (std::strncmp(key, "v_can_charge", sizeof("v_can_charge")) == 0)
+        {
+            this->v_can_charge = value;
+        }
+        else if (std::strncmp(key, "i_can_charge", sizeof("i_can_charge")) == 0)
+        {
+            this->i_can_charge = value;
+        }
     }
 
     void Parameters::set_parameter_u32(const char key[KEY_CHAR_COUNT], uint32_t value)

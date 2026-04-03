@@ -95,6 +95,8 @@ namespace t_battery
         void performHWSelfTest();
         void checkError(int error);
 
+        void publish_snapshot(int64_t timestamp_us);
+
     public:
         TBattery(uint32_t period);
 

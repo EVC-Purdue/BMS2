@@ -14,7 +14,7 @@ constexpr int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
 
 constexpr uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
 
-constexpr const char* SPIFFS_BASE_PATH = "/spiffs";
+constexpr const char* FILESYSTEM_BASE_PATH = "/littlefs";
 constexpr uint32_t SPIFFS_MAX_FILES = 5;
 constexpr bool SPIFFS_FORMAT_IF_MOUNT_FAILED = true;
 

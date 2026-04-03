@@ -101,7 +101,7 @@ void configure(spi_device_handle_t* spi_handle) {
 
     // Configure and mount LittleFS (file system)
     esp_vfs_littlefs_conf_t conf = {
-        .base_path = "/littlefs",
+        .base_path = FILESYSTEM_BASE_PATH,
         .partition_label = "storage",
         .partition = nullptr, // unused
         .format_if_mount_failed = true,
