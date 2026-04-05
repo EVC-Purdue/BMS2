@@ -211,19 +211,21 @@ namespace t_battery
     void TBattery::printMenu()
     {
         printf("Please enter LTC6811 Command\n");
-        printf("Write Configuration: 1            | Reset PEC Counter: 11 \n");
-        printf("Read Configuration: 2             | Run ADC Self Test: 12\n");
-        printf("Start Cell Voltage Conversion: 3  | Set Discharge: 13\n");
-        printf("Read Cell Voltages: 4             | Clear Discharge: 14\n");
-        printf("Start Aux Voltage Conversion: 5   | Clear Registers: 15\n");
-        printf("Read Aux Voltages: 6              | Run Mux Self Test: 16\n");
-        printf("Start Stat Voltage Conversion: 7  | Run ADC overlap Test: 17\n");
-        printf("Read Stat Voltages: 8             | Run Digital Redundancy Test: 18\n");
-        printf("loop Measurements: 9              | Run Open Wire Test: 19\n");
-        printf("Read PEC Errors: 10               | Loop measurements with datalog output: 20\n");
-        printf("States, MONITOR: 21, Balancing: 22, Idle: 23\n");
+        printf("1: Write Configuration            | 11: Reset PEC Counter\n");
+        printf("2: Read Configuration             | 12: Run ADC Self Test\n");
+        printf("3: Start Cell Voltage Conversion  | 13: Set Discharge\n");
+        printf("4: Read Cell Voltages             | 14: Clear Discharge\n");
+        printf("5: Start Aux Voltage Conversion   | 15: Clear Registers\n");
+        printf("6: Read Aux Voltages              | 16: Run Mux Self Test\n");
+        printf("7: Start Stat Voltage Conversion  | 17: Run ADC overlap Test\n");
+        printf("8: Read Stat Voltages             | 18: Run Digital Redundancy Test\n");
+        printf("9: Loop Measurements              | 19: Run Open Wire Test\n");
+        printf("10: Read PEC Errors               | 20: Loop measurements with datalog output\n\n");
+
+        printf("21: Clear gpios and discharges    |");
         printf("Request Charging: 25              | Get charger status: 26\n");
-        printf("Delete Datastore: 30\n");
+        printf("States, MONITOR: 31, Balancing: 32, Idle: 33\n");
+        printf("Delete Datastore: 40\n");
         printf("Please enter command: \n");
         printf("\n");
     }
@@ -431,19 +433,17 @@ namespace t_battery
             printMenu();
             break;
 
+        case 21: // Clear gpios and discharges
+            for (int current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
+            {
+                // this->battery_data.ics[current_ic].discharge = 0;
+                bool gpio[5];
+                LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
+            }
+
         case 0:
         case 'm': // prints menu
             printMenu();
-            break;
-
-        case 21:
-            mode = modes::Mode::MONITORING;
-            break;
-        case 22:
-            mode = modes::Mode::BALANCING;
-            break;
-        case 23:
-            mode = modes::Mode::IDLE;
             break;
 
         case 25:
@@ -472,7 +472,17 @@ namespace t_battery
             }
             break;
 
-        case 30:
+        case 31:
+            mode = modes::Mode::MONITORING;
+            break;
+        case 32:
+            mode = modes::Mode::BALANCING;
+            break;
+        case 33:
+            mode = modes::Mode::IDLE;
+            break;
+
+        case 40:
             printf("Deleting file: %s\r\n", "/log.csv");
             if (unlink("/littlefs/log.csv")) // Use unlink to delete the file from LittleFS
             {

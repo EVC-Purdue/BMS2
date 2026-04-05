@@ -313,7 +313,7 @@ namespace web
         if (checkCorsPreflight(req))
             return ESP_OK;
 
-        ledcWrite(0, 0); // TODO: check on LEDC
+        // ledcWrite(0, 0); // TODO: check on LEDC
 
         digitalWrite(pins::ESP::CONTACTOR, HIGH);
         return send_text(req, "200 OK", "text/plain", "enable");
@@ -337,8 +337,8 @@ namespace web
             return ESP_OK;
 
         // TODO: check if heartbeat exists
-        uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
-        xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
+        // uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
+        // xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
 
         queue_logger_message(q_logger::Message{q_logger::msg::Flush{}});
 
@@ -356,8 +356,8 @@ namespace web
             return ESP_OK;
 
         // TODO: check if heartbeat exists
-        uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
-        xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
+        // uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
+        // xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
 
         queue_logger_message(q_logger::Message{q_logger::msg::Flush{}});
         bool success = std::remove(LOG_FILE) == 0;
@@ -655,18 +655,11 @@ namespace web
         if (checkCorsPreflight(req))
             return ESP_OK;
 
-        // TODO: convert
-        clear_discharge(TOTAL_IC, bms_ic);
-        wakeup_sleep(TOTAL_IC);
-        LTC6811_wrcfg(TOTAL_IC, bms_ic);
+        q_battery::Message msg = q_battery::msg::RunCommand{.command_id = 14};
+        queue_battery_message(msg); // Clear discharge transistors
 
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
-        {
-            battery.pack[current_ic].discharge = 0;
-            bool gpio[5];
-            // gpio[GPIO_BACKBAL] = 0;
-            LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
-        }
+        q_battery::Message msg2 = q_battery::msg::RunCommand{.command_id = 21};
+        queue_battery_message(msg2); // Clear gpios and discharges
 
         set_mode(modes::Mode::IDLE);
 
@@ -681,17 +674,11 @@ namespace web
         if (checkCorsPreflight(req))
             return ESP_OK;
 
-        // TODO: convert
-        clear_discharge(TOTAL_IC, bms_ic);
-        wakeup_sleep(TOTAL_IC);
-        LTC6811_wrcfg(TOTAL_IC, bms_ic);
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
-        {
-            battery.pack[current_ic].discharge = 0;
-            bool gpio[5];
-            // gpio[GPIO_BACKBAL] = 0;
-            LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
-        }
+        q_battery::Message msg = q_battery::msg::RunCommand{.command_id = 14};
+        queue_battery_message(msg); // Clear discharge transistors
+
+        q_battery::Message msg2 = q_battery::msg::RunCommand{.command_id = 21};
+        queue_battery_message(msg2); // Clear gpios and discharges
 
         set_mode(modes::Mode::MONITORING);
 
@@ -1459,12 +1446,6 @@ namespace web
     bool is_fault_set(uint32_t bits, size_t index)
     {
         return (bits & (static_cast<uint32_t>(1) << index)) != 0U;
-    }
-
-    bool clear_fault_by_index(size_t fault_index)
-    {
-        q_battery::Message msg = faults::msg::ClearFault{.fault_index = fault_index};
-        return queue_battery_message(msg);
     }
 }
 #endif

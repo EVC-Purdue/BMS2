@@ -10,6 +10,7 @@
 #include "vector"
 #include "battery/battery.hpp"
 #include "logger/q_logger.hpp"
+#include "battery/q_battery.hpp"
 
 namespace web
 {
@@ -86,6 +87,7 @@ namespace web
     float pack_voltage_sum(const battery::IcData &ic);
     bool is_fault_set(uint32_t bits, size_t index);
     bool queue_logger_message(const q_logger::Message &msg);
+    bool queue_battery_message(const q_battery::Message &msg);
     bool clear_fault_by_index(size_t fault_index);
 } // namespace web
 

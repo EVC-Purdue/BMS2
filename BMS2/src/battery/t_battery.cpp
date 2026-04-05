@@ -126,6 +126,10 @@ namespace t_battery
 									  {
 										  this->generateLogLine();
 									  },
+									  [this](const q_battery::msg::RunCommand &rc)
+									  {
+										  this->runCommand(rc.command_id);
+									  },
 									  [this](const params::msg::Message &p_msg)
 									  {
 										  this->parameters.set_parameter(p_msg);

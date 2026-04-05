@@ -25,11 +25,16 @@ namespace msg {
     struct GenerateLogLine {
         // No data needed, just a trigger
     };
+
+    struct RunCommand {
+        uint32_t command_id;
+    };
 } // namespace msg
 
 using Message = std::variant<
     msg::SetMode,
     msg::GenerateLogLine,
+    msg::RunCommand,
     params::msg::Message,
     faults::msg::ClearFault
 >;
