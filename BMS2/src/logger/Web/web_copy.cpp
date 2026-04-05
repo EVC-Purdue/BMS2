@@ -168,9 +168,7 @@ namespace web
     esp_err_t handleParameters(httpd_req_t *req)
     {
         if (checkCorsPreflight(req))
-        {
             return ESP_OK;
-        }
 
         std::string key = get_path_arg(req, "/parameters/", 0);
         std::string value = get_path_arg(req, "/parameters/", 1);
@@ -193,437 +191,471 @@ namespace web
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleAcknowledge()
+    esp_err_t handleAcknowledge(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        String f = server.pathArg(0);
+        std::string fault = get_path_arg(req, "/acknowledge/", 0);
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
+        std::string r = "ok";
 
-        String r = "ok";
-
-        if (f == "batteryMinVoltage")
+        if (fault == "batteryMinVoltage")
         {
-            battery.pFaults.batteryMinVoltage = false;
+            clear_fault_by_index(faults::PersistentFault::CELL_UNDERVOLTAGE);
         }
-        else if (f == "batteryMaxVoltage")
+        if (fault == "batteryMaxVoltage")
         {
-            battery.pFaults.batteryMaxVoltage = false;
+            clear_fault_by_index(faults::PersistentFault::CELL_OVERVOLTAGE);
         }
-        else if (f == "batteryAverageVoltage")
+        if (fault == "batteryAverageVoltage")
         {
-            battery.pFaults.batteryAverageVoltage = false;
+            clear_fault_by_index(faults::PersistentFault::BATTERY_UNDERVOLTAGE);
+            clear_fault_by_index(faults::PersistentFault::BATTERY_OVERVOLTAGE);
         }
-        else if (f == "batteryVoltageDiff")
+        if (fault == "batteryVoltageDiff")
         {
-            battery.pFaults.batteryVoltageDiff = false;
+            clear_fault_by_index(faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE);
         }
-        else if (f == "batteryTherm1Temp")
+        if (fault == "batteryTherm1Temp")
         {
-            battery.pFaults.batteryTherm1Temp = false;
+            clear_fault_by_index(faults::PersistentFault::TEMP_0);
         }
-        else if (f == "batteryTherm2Temp")
+        if (fault == "batteryTherm2Temp")
         {
-            battery.pFaults.batteryTherm2Temp = false;
+            clear_fault_by_index(faults::PersistentFault::TEMP_1);
         }
-        else if (f == "batteryTherm3Temp")
+        if (fault == "batteryTherm3Temp")
         {
-            battery.pFaults.batteryTherm3Temp = false;
+            clear_fault_by_index(faults::PersistentFault::TEMP_2);
         }
-        else if (f == "batteryTherm4Temp")
+        if (fault == "batteryTherm4Temp")
         {
-            battery.pFaults.batteryTherm4Temp = false;
+            clear_fault_by_index(faults::PersistentFault::TEMP_3);
         }
-        else if (f == "batteryCurrent")
+        if (fault == "batteryCurrent")
         {
-            battery.pFaults.batteryCurrent = false;
+            clear_fault_by_index(faults::PersistentFault::OVERCURRENT);
+            clear_fault_by_index(faults::PersistentFault::UNDERCURRENT);
         }
-        else if (f == "overPower")
+        if (fault == "overPower")
         {
-            battery.pFaults.overPower = false;
+            clear_fault_by_index(faults::WarningFault::OVERPOWER);
         }
-        else if (f == "coreZeroWatch")
+        if (fault == "coreZeroWatch")
         {
-            battery.pFaults.coreZeroWatch = false;
+            clear_fault_by_index(faults::WarningFault::CORE_ZERO_WATCH);
         }
         else
         {
             r = "fault not found";
         }
 
-        xSemaphoreGive(xMutex);
-
-        server.send(200, "text/plain", r);
+        return send_text(req, "200 OK", "text/plain", r);
     }
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleCanMode()
+    esp_err_t handleCanMode(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        String m = server.pathArg(0);
+        battery_state_cache::Snapshot snapshot = {};
+        battery_state_cache::read(snapshot);
+        std::string mode = get_path_arg(req, "/canMode/", 0);
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-
-        if (m == "off")
+        if (mode == "off")
         {
-            if (canMode != CanMode::OFF)
-            {
-                stopCan();
-            }
-
-            canMode = CanMode::OFF;
-            digitalWrite(CAN_ON_GPIO, LOW);
-            server.send(200, "text/plain", "off");
+            digitalWrite(pins::ESP::CAN_S, LOW);
+            can::stopCharging();
+            return send_text(req, "200 OK", "text/plain", "off");
         }
+        else if (mode == "charge")
+        {
+            can::requestCharging(snapshot.parameters.v_can_charge, snapshot.parameters.i_can_charge, true);
+            return send_text(req, "200 OK", "text/plain", "charge");
+        }
+        // else if (mode == "vesc")
+        // {
+        //     canMode = CanMode::VESC;
+        //     server.send(200, "text/plain", "vesc");
+        // }
+        // else if (mode == "sevcon")
+        // {
+        //     canMode = CanMode::SEVCON;
+        //     server.send(200, "text/plain", "sevcon");
+        // }
         else
         {
-            if (canMode == CanMode::OFF)
-            {
-                startCan();
-            }
+            return send_text(req, "400 Bad Request", "text/plain", "invalid mode");
+        }
+    }
+    // -------------------------------------------------------------------------- //
 
-            digitalWrite(CAN_ON_GPIO, HIGH);
+    // -------------------------------------------------------------------------- //
+    esp_err_t handleFullShutdown(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-            if (m == "charge")
-            {
-                canMode = CanMode::CHARGE;
-                server.send(200, "text/plain", "charge");
-            }
-            else if (m == "vesc")
-            {
-                canMode = CanMode::VESC;
-                server.send(200, "text/plain", "vesc");
-            }
-            else if (m == "sevcon")
-            {
-                canMode = CanMode::SEVCON;
-                server.send(200, "text/plain", "sevcon");
-            }
-            else
-            {
-                server.send(400, "text/plain", "invalid mode");
-            }
+        digitalWrite(pins::ESP::CONTACTOR, LOW);
+        digitalWrite(pins::ESP::PWR_EN, LOW);
+        pinMode(pins::ESP::PWR_EN, INPUT);
+
+        return send_text(req, "200 OK", "text/plain", "ok");
+    }
+    // -------------------------------------------------------------------------- //
+
+    // -------------------------------------------------------------------------- //
+    esp_err_t hangleForceDischargeEnable(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+            return ESP_OK;
+
+        ledcWrite(0, 0); // TODO: check on LEDC
+
+        digitalWrite(pins::ESP::CONTACTOR, HIGH);
+        return send_text(req, "200 OK", "text/plain", "enable");
+    }
+
+    esp_err_t handleForceDischargeDisable(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+            return ESP_OK;
+
+        digitalWrite(pins::ESP::CONTACTOR, LOW);
+        digitalWrite(pins::ESP::SS_SWITCH, LOW);
+        return send_text(req, "200 OK", "text/plain", "disable");
+    }
+    // -------------------------------------------------------------------------- //
+
+    // -------------------------------------------------------------------------- //
+    esp_err_t handleLogDownload(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+            return ESP_OK;
+
+        // TODO: check if heartbeat exists
+        uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
+        xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
+
+        queue_logger_message(q_logger::Message{q_logger::msg::Flush{}});
+
+        if (!stream_file(req, LOG_FILE, "text/csv"))
+        {
+            return send_text(req, "404 Not Found", "text/plain", "error");
         }
 
-        xSemaphoreGive(xMutex);
-    }
-    // -------------------------------------------------------------------------- //
-
-    // -------------------------------------------------------------------------- //
-    void handleFullShutdown()
-    {
-        if (checkCorsPreflight())
-            return;
-
-        digitalWrite(CONTACTOR_GPIO, LOW);
-
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-        buzzOn = false;
-        xSemaphoreGive(xMutex);
-
-        server.send(200, "text/plain", "ok");
-
-        digitalWrite(PWR_EN_GPIO, LOW);
-        pinMode(PWR_EN_GPIO, INPUT);
-    }
-    // -------------------------------------------------------------------------- //
-
-    // -------------------------------------------------------------------------- //
-    void hangleForceDischargeEnable()
-    {
-        if (checkCorsPreflight())
-            return;
-
-        digitalWrite(CONTACTOR_GPIO, HIGH);
-
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-        buzzOn = false;
-        xSemaphoreGive(xMutex);
-
-        ledcWrite(0, 0);
-        // digitalWrite(BUZZER_GPIO, LOW);
-        server.send(200, "text/plain", "enable");
+        return ESP_OK;
     }
 
-    void handleForceDischargeDisable()
+    esp_err_t handleLogDelete(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        digitalWrite(CONTACTOR_GPIO, LOW);
-        digitalWrite(SS_SWITCH_GPIO, LOW);
-
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-        buzzOn = true;
-        xSemaphoreGive(xMutex);
-
-        server.send(200, "text/plain", "disable");
-    }
-    // -------------------------------------------------------------------------- //
-
-    // -------------------------------------------------------------------------- //
-    void handleLogDownload()
-    {
-        if (checkCorsPreflight())
-            return;
-
+        // TODO: check if heartbeat exists
         uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
         xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
-        File file = SPIFFS.open(LOG_FILE, "r");
-        server.streamFile(file, "text/csv");
-        file.close();
-    }
 
-    void handleLogDelete()
-    {
-        if (checkCorsPreflight())
-            return;
-
-        uint8_t heartbeat = HEARTBEAT_VALUE_LONG;
-        xQueueSend(heartbeatQueue, &heartbeat, HEARTBEAT_SEND_DELAY);
-        bool success = SPIFFS.remove(LOG_FILE);
-        server.send(200, "text/plain", success ? "ok" : "error");
+        queue_logger_message(q_logger::Message{q_logger::msg::Flush{}});
+        bool success = std::remove(LOG_FILE) == 0;
+        return send_text(req, "200 OK", "text/plain", success ? "ok" : "error");
     }
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleName()
+    esp_err_t handleName(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
-
-        server.send(200, "text/plain", apSSID);
+        if (checkCorsPreflight(req))
+            return ESP_OK;
+        return send_text(req, "200 OK", "text/plain", BMS_NAME);
     }
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleReadCells()
+    esp_err_t handleReadCells(httpd_req_t *req)
     {
-        String output = "apSSID: ";
-        output += apSSID;
+        battery_state_cache::Snapshot snapshot = {};
+        battery_state_cache::read(snapshot);
+
+        std::string output;
+        output += "apSSID: ";
+        output += BMS_NAME;
         output += "\n";
-
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        for (size_t current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
-            for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++)
+            for (size_t i = 0; i < battery::CELL_COUNT_PER_IC; i++)
             {
-                output += battery.pack[current_ic].cells[i] * 0.0001;
+                output += format_float(
+                    battery::TO_VOLTAGE(snapshot.battery_data.ics[current_ic].cell_voltages[i]),
+                    4);
                 output += ",";
             }
             output += "\n";
         }
         output += "\n";
         output += "Min_Volt: ";
-        output += battery.min.voltage * 0.0001;
-        output += ",";
+        output += format_float(battery::TO_VOLTAGE(snapshot.battery_data.min_voltage), 4);
         output += "\n";
         output += "Max_Volt: ";
-        output += battery.max.voltage * 0.0001;
-        output += ",";
+        output += format_float(battery::TO_VOLTAGE(snapshot.battery_data.max_voltage), 4);
         output += "\n";
         output += "Avg_Volt: ";
-        output += battery.average * 0.0001;
+        output += format_float(battery::TO_VOLTAGE(snapshot.battery_data.avg_voltage), 4);
         output += "\n";
         output += "Sum:";
-        output += battery.sum * 0.0001;
+        output += format_float(battery::TO_VOLTAGE(snapshot.battery_data.sum_voltage), 4);
         output += "\n";
 
         output += "Therm1:";
-        output += battery.temps.therm1;
+        output += format_float(snapshot.battery_data.temps.therms[0], 2);
         output += "\n";
 
         output += "Therm2:";
-        output += battery.temps.therm2;
+        output += format_float(snapshot.battery_data.temps.therms[1], 2);
         output += "\n";
 
         output += "Therm3:";
-        output += battery.temps.therm3;
+        output += format_float(snapshot.battery_data.temps.therms[2], 2);
         output += "\n";
 
         output += "Therm4:";
-        output += battery.temps.therm4;
+        output += format_float(snapshot.battery_data.temps.therms[3], 2);
         output += "\n";
 
         output += "ThermFET:";
-        output += battery.temps.thermFET;
+        output += format_float(snapshot.battery_data.temps.fet, 2);
         output += "\n";
 
         output += "ThermBalBot:";
-        output += battery.temps.thermBalBot;
+        output += format_float(snapshot.battery_data.temps.bal_bot, 2);
         output += "\n";
 
         output += "ThermBalTop:";
-        output += battery.temps.thermBalTop;
+        output += format_float(snapshot.battery_data.temps.bal_top, 2);
         output += "\n";
 
         output += "Current:";
-        output += battery.current;
+        output += format_float(snapshot.battery_data.current, 2);
         output += "\n";
 
         output += "Bypass: ";
-        output += parameters.bypass ? "ON" : "OFF";
-        output += "\n";
+        output += snapshot.parameters.bypass ? "ON\n" : "OFF\n";
 
         output += "Any bypassed: ";
-        output += battery.anyBypassed ? "*Yes*" : "No";
-        output += "\n";
+        output += snapshot.any_bypassed ? "*Yes*\n" : "No\n";
 
         output += "State: ";
-        output += printState(runState);
+        output += printState(snapshot.mode);
         output += "\n";
 
         output += "SSS State: ";
-        output += digitalRead(SS_SWITCH_GPIO) ? "ON" : "OFF";
+        output += gpio_get_level(pins::ESP::SS_SWITCH) ? "ON" : "OFF";
         output += "  HCS State: ";
-        output += digitalRead(CONTACTOR_GPIO) ? "ON" : "OFF";
+        output += gpio_get_level(pins::ESP::CONTACTOR) ? "ON" : "OFF";
         output += "\n";
 
-        esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, NULL);
-        while (it != NULL)
-        {
-            const esp_partition_t *partition = esp_partition_get(it);
-            // Serial.printf("Partition: %s, Size: %d bytes, Address: 0x%08x\n", partition->label, partition->size, partition->address);
-            output += "\n";
-            output += "Partition: ";
-            output += partition->label;
-            output += ", Size: ";
-            output += partition->size;
-            output += " bytes, Address: 0x";
-            output += String(partition->address, HEX);
-            it = esp_partition_next(it);
-        }
-        esp_partition_iterator_release(it);
-
-        xSemaphoreGive(xMutex);
-
-        server.send(200, "text/plain", output);
+        return send_text(req, "200 OK", "text/plain", output);
     }
 
-    void handleData()
+    esp_err_t handleData(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        // TODO: not sure if I am using ArduinoJson correctly
-        // It compiles be it might throw an error at runtime
-        JsonDocument doc;
+        battery_state_cache::Snapshot snapshot = {};
+        battery_state_cache::read(snapshot);
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
+        std::string json;
+        json.reserve(3072);
+        json += "{";
 
-        doc["cells"] = JsonArray();
-        doc["discharge"] = JsonArray();
-
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
+        json += "\"cells\":[";
+        for (size_t ic = 0; ic < battery::IC_COUNT; ic++)
         {
-            doc["discharge"][current_ic] = battery.pack[current_ic].discharge;
-
-            doc["cells"][current_ic] = JsonArray();
-            for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++)
+            if (ic > 0)
             {
-                doc["cells"][current_ic][i] = battery.pack[current_ic].cells[i] * 0.0001;
+                json += ",";
             }
+            json += "[";
+            for (size_t cell = 0; cell < battery::CELL_COUNT_PER_IC; cell++)
+            {
+                if (cell > 0)
+                {
+                    json += ",";
+                }
+                json += format_float(
+                    battery::TO_VOLTAGE(snapshot.battery_data.ics[ic].cell_voltages[cell]),
+                    4);
+            }
+            json += "]";
         }
+        json += "],";
 
-        doc["avg"] = battery.average * 0.0001;
-        doc["min"] = battery.min.voltage * 0.0001;
-        doc["max"] = battery.max.voltage * 0.0001;
-        doc["sum"] = battery.sum * 0.0001;
-        doc["power"] = battery.sum * battery.current * 0.0001;
+        json += "\"discharge\":[";
+        for (size_t ic = 0; ic < battery::IC_COUNT; ic++)
+        {
+            if (ic > 0)
+            {
+                json += ",";
+            }
+            json += "[";
+            for (size_t cell = 0; cell < battery::CELL_COUNT_PER_IC; cell++)
+            {
+                if (cell > 0)
+                {
+                    json += ",";
+                }
+                json += snapshot.battery_data.ics[ic].discharge[cell] ? "true" : "false";
+            }
+            json += "]";
+        }
+        json += "],";
 
-        doc["pack"]["1"] = battery.pack[0].sum * 0.0001;
-        doc["pack"]["2"] = battery.pack[1].sum * 0.0001;
+        json += "\"avg\":" + format_float(battery::TO_VOLTAGE(snapshot.battery_data.avg_voltage), 4) + ",";
+        json += "\"min\":" + format_float(battery::TO_VOLTAGE(snapshot.battery_data.min_voltage), 4) + ",";
+        json += "\"max\":" + format_float(battery::TO_VOLTAGE(snapshot.battery_data.max_voltage), 4) + ",";
+        json += "\"sum\":" + format_float(battery::TO_VOLTAGE(snapshot.battery_data.sum_voltage), 4) + ",";
 
-        doc["current"] = battery.current;
+        const float sum_voltage = battery::TO_VOLTAGE(snapshot.battery_data.sum_voltage);
+        json += "\"power\":" + format_float(sum_voltage * snapshot.battery_data.current, 4) + ",";
 
-        doc["therm"]["1"] = battery.temps.therm1;
-        doc["therm"]["2"] = battery.temps.therm2;
-        doc["therm"]["3"] = battery.temps.therm3;
-        doc["therm"]["4"] = battery.temps.therm4;
-        doc["therm"]["FET"] = battery.temps.thermFET;
-        doc["therm"]["balBot"] = battery.temps.thermBalBot;
-        doc["therm"]["balTop"] = battery.temps.thermBalTop;
+        json += "\"pack\":{";
+        json += "\"1\":" + format_float(pack_voltage_sum(snapshot.battery_data.ics[0]), 4) + ",";
+        json += "\"2\":" + format_float(pack_voltage_sum(snapshot.battery_data.ics[1]), 4);
+        json += "},";
 
-        doc["anyBypassed"] = battery.anyBypassed;
-        doc["tDiffTriggered"] = battery.tDiffTriggered;
-        doc["balTempBotTriggered"] = battery.balTempBotTriggered;
-        doc["balTempTopTriggered"] = battery.balTempTopTriggered;
+        json += "\"current\":" + format_float(snapshot.battery_data.current, 4) + ",";
 
-        doc["state"] = printState(runState);
+        json += "\"therm\":{";
+        json += "\"1\":" + format_float(snapshot.battery_data.temps.therms[0], 2) + ",";
+        json += "\"2\":" + format_float(snapshot.battery_data.temps.therms[1], 2) + ",";
+        json += "\"3\":" + format_float(snapshot.battery_data.temps.therms[2], 2) + ",";
+        json += "\"4\":" + format_float(snapshot.battery_data.temps.therms[3], 2) + ",";
+        json += "\"FET\":" + format_float(snapshot.battery_data.temps.fet, 2) + ",";
+        json += "\"balBot\":" + format_float(snapshot.battery_data.temps.bal_bot, 2) + ",";
+        json += "\"balTop\":" + format_float(snapshot.battery_data.temps.bal_top, 2);
+        json += "},";
 
-        doc["SSS"] = digitalRead(SS_SWITCH_GPIO) ? true : false;
-        doc["HCS"] = digitalRead(CONTACTOR_GPIO) ? true : false;
+        json += "\"anyBypassed\":";
+        json += snapshot.any_bypassed ? "true," : "false,";
+        json += "\"tDiffTriggered\":";
+        json += snapshot.t_diff_triggered ? "true," : "false,";
+        json += "\"balTempBotTriggered\":";
+        json += snapshot.bal_temp_bot_triggered ? "true," : "false,";
+        json += "\"balTempTopTriggered\":";
+        json += snapshot.bal_temp_top_triggered ? "true," : "false,";
 
-        doc["parameters"]["bypass"] = parameters.bypass;
-        doc["parameters"]["vBypass"] = parameters.vBypass;
+        json += "\"state\":\"";
+        json += printState(snapshot.mode);
+        json += "\",";
 
-        doc["parameters"]["vMin"] = parameters.vMin;
-        doc["parameters"]["vMax"] = parameters.vMax;
-        doc["parameters"]["vMinAvg"] = parameters.vMinAvg;
-        doc["parameters"]["vMaxAvg"] = parameters.vMaxAvg;
-        doc["parameters"]["vDiff"] = parameters.vDiff;
+        json += "\"SSS\":";
+        json += gpio_get_level(pins::ESP::SS_SWITCH) ? "true," : "false,";
+        json += "\"HCS\":";
+        json += gpio_get_level(pins::ESP::CONTACTOR) ? "true," : "false,";
 
-        doc["parameters"]["tMin"] = parameters.tMin;
-        doc["parameters"]["tMax"] = parameters.tMax;
-        doc["parameters"]["tDiff"] = parameters.tDiff;
+        json += "\"parameters\":{";
+        json += "\"bypass\":";
+        json += snapshot.parameters.bypass ? "true," : "false,";
+        json += "\"vBypass\":" + format_float(snapshot.parameters.v_bypass, 4) + ",";
+        json += "\"vMin\":" + format_float(snapshot.parameters.v_min, 4) + ",";
+        json += "\"vMax\":" + format_float(snapshot.parameters.v_max, 4) + ",";
+        json += "\"vMinAvg\":" + format_float(snapshot.parameters.v_min_avg, 4) + ",";
+        json += "\"vMaxAvg\":" + format_float(snapshot.parameters.v_max_avg, 4) + ",";
+        json += "\"vDiff\":" + format_float(snapshot.parameters.v_diff, 4) + ",";
+        json += "\"tMin\":" + format_float(snapshot.parameters.t_min, 4) + ",";
+        json += "\"tMax\":" + format_float(snapshot.parameters.t_max, 4) + ",";
+        json += "\"tDiff\":" + format_float(snapshot.parameters.t_diff, 4) + ",";
+        json += "\"tMaxBal\":" + format_float(snapshot.parameters.t_max_bal, 4) + ",";
+        json += "\"tResetBal\":" + format_float(snapshot.parameters.t_reset_bal, 4) + ",";
+        json += "\"logSpeed\":" + std::to_string(snapshot.parameters.log_inter) + ",";
+        json += "\"deleteLog\":";
+        json += snapshot.parameters.delete_log ? "true," : "false,";
+        json += "\"vCanCharge\":" + format_float(snapshot.parameters.v_can_charge, 4) + ",";
+        json += "\"iCanCharge\":" + format_float(snapshot.parameters.i_can_charge, 4);
+        json += "},";
 
-        doc["parameters"]["tMaxBal"] = parameters.tMaxBal;
-        doc["parameters"]["tResetBal"] = parameters.tResetBal;
+        json += "\"faults\":{";
+        json += "\"batteryMinVoltage\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::CELL_UNDERVOLTAGE) ? "true," : "false,";
+        json += "\"batteryMaxVoltage\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::CELL_OVERVOLTAGE) ? "true," : "false,";
+        json += "\"batteryAverageVoltage\":";
+        json += (is_fault_set(snapshot.faults, faults::PersistentFault::BATTERY_UNDERVOLTAGE) ||
+                 is_fault_set(snapshot.faults, faults::PersistentFault::BATTERY_OVERVOLTAGE))
+                    ? "true,"
+                    : "false,";
+        json += "\"batteryVoltageDiff\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE) ? "true," : "false,";
+        json += "\"batteryTherm1Temp\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::TEMP_0) ? "true," : "false,";
+        json += "\"batteryTherm2Temp\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::TEMP_1) ? "true," : "false,";
+        json += "\"batteryTherm3Temp\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::TEMP_2) ? "true," : "false,";
+        json += "\"batteryTherm4Temp\":";
+        json += is_fault_set(snapshot.faults, faults::PersistentFault::TEMP_3) ? "true," : "false,";
+        json += "\"batteryCurrent\":";
+        json += (is_fault_set(snapshot.faults, faults::PersistentFault::OVERCURRENT) ||
+                 is_fault_set(snapshot.faults, faults::PersistentFault::UNDERCURRENT))
+                    ? "true,"
+                    : "false,";
+        json += "\"overPower\":";
+        json += is_fault_set(snapshot.faults, faults::WarningFault::OVERPOWER) ? "true," : "false,";
+        json += "\"coreZeroWatch\":";
+        json += is_fault_set(snapshot.faults, faults::WarningFault::CORE_ZERO_WATCH) ? "true" : "false";
+        json += "},";
 
-        doc["parameters"]["logSpeed"] = parameters.logSpeed;
-        doc["parameters"]["deleteLog"] = parameters.deleteLog;
+        json += "\"pFaults\":{";
+        json += "\"batteryMinVoltage\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::CELL_UNDERVOLTAGE) ? "true," : "false,";
+        json += "\"batteryMaxVoltage\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::CELL_OVERVOLTAGE) ? "true," : "false,";
+        json += "\"batteryAverageVoltage\":";
+        json += (is_fault_set(snapshot.persistent_faults, faults::PersistentFault::BATTERY_UNDERVOLTAGE) ||
+                 is_fault_set(snapshot.persistent_faults, faults::PersistentFault::BATTERY_OVERVOLTAGE))
+                    ? "true,"
+                    : "false,";
+        json += "\"batteryVoltageDiff\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::BATTERY_VOLTAGE_IMBALANCE) ? "true," : "false,";
+        json += "\"batteryTherm1Temp\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::TEMP_0) ? "true," : "false,";
+        json += "\"batteryTherm2Temp\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::TEMP_1) ? "true," : "false,";
+        json += "\"batteryTherm3Temp\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::TEMP_2) ? "true," : "false,";
+        json += "\"batteryTherm4Temp\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::PersistentFault::TEMP_3) ? "true," : "false,";
+        json += "\"batteryCurrent\":";
+        json += (is_fault_set(snapshot.persistent_faults, faults::PersistentFault::OVERCURRENT) ||
+                 is_fault_set(snapshot.persistent_faults, faults::PersistentFault::UNDERCURRENT))
+                    ? "true,"
+                    : "false,";
+        json += "\"overPower\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::WarningFault::OVERPOWER) ? "true," : "false,";
+        json += "\"coreZeroWatch\":";
+        json += is_fault_set(snapshot.persistent_faults, faults::WarningFault::CORE_ZERO_WATCH) ? "true" : "false";
+        json += "},";
 
-        doc["parameters"]["vCanCharge"] = parameters.vCanCharge;
-        doc["parameters"]["iCanCharge"] = parameters.iCanCharge;
+        json += "\"name\":\"";
+        json += BMS_NAME;
+        json += "\"";
+        json += "}";
 
-        doc["faults"]["batteryMinVoltage"] = battery.faults.batteryMinVoltage;
-        doc["faults"]["batteryMaxVoltage"] = battery.faults.batteryMaxVoltage;
-        doc["faults"]["batteryAverageVoltage"] = battery.faults.batteryAverageVoltage;
-        doc["faults"]["batteryVoltageDiff"] = battery.faults.batteryVoltageDiff;
-        doc["faults"]["batteryTherm1Temp"] = battery.faults.batteryTherm1Temp;
-        doc["faults"]["batteryTherm2Temp"] = battery.faults.batteryTherm2Temp;
-        doc["faults"]["batteryTherm3Temp"] = battery.faults.batteryTherm3Temp;
-        doc["faults"]["batteryTherm4Temp"] = battery.faults.batteryTherm4Temp;
-        doc["faults"]["batteryCurrent"] = battery.faults.batteryCurrent;
-        doc["faults"]["overPower"] = battery.faults.overPower;
-        doc["faults"]["coreZeroWatch"] = battery.faults.coreZeroWatch;
-
-        doc["pFaults"]["batteryMinVoltage"] = battery.pFaults.batteryMinVoltage;
-        doc["pFaults"]["batteryMaxVoltage"] = battery.pFaults.batteryMaxVoltage;
-        doc["pFaults"]["batteryAverageVoltage"] = battery.pFaults.batteryAverageVoltage;
-        doc["pFaults"]["batteryVoltageDiff"] = battery.pFaults.batteryVoltageDiff;
-        doc["pFaults"]["batteryTherm1Temp"] = battery.pFaults.batteryTherm1Temp;
-        doc["pFaults"]["batteryTherm2Temp"] = battery.pFaults.batteryTherm2Temp;
-        doc["pFaults"]["batteryTherm3Temp"] = battery.pFaults.batteryTherm3Temp;
-        doc["pFaults"]["batteryTherm4Temp"] = battery.pFaults.batteryTherm4Temp;
-        doc["pFaults"]["batteryCurrent"] = battery.pFaults.batteryCurrent;
-        doc["pFaults"]["overPower"] = battery.pFaults.overPower;
-        doc["pFaults"]["coreZeroWatch"] = battery.pFaults.coreZeroWatch;
-
-        doc["name"] = apSSID;
-
-        xSemaphoreGive(xMutex);
-
-        String output;
-        serializeJson(doc, output);
-        server.send(200, "application/json", output);
+        return send_text(req, "200 OK", "application/json", json);
     }
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleIdle()
+    esp_err_t handleIdle(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-
+        // TODO: convert
         clear_discharge(TOTAL_IC, bms_ic);
         wakeup_sleep(TOTAL_IC);
         LTC6811_wrcfg(TOTAL_IC, bms_ic);
@@ -636,26 +668,23 @@ namespace web
             LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
         }
 
-        runState = IDLE;
+        set_mode(modes::Mode::IDLE);
 
-        xSemaphoreGive(xMutex);
+        digitalWrite(pins::ESP::CONTACTOR, LOW);
+        digitalWrite(pins::ESP::SS_SWITCH, LOW);
 
-        digitalWrite(CONTACTOR_GPIO, LOW);
-        digitalWrite(SS_SWITCH_GPIO, LOW);
-        server.send(200, "text/plain", printState(runState));
+        return send_text(req, "200 OK", "text/plain", printState(modes::Mode::IDLE));
     }
 
-    void handleMonitor()
+    esp_err_t handleMonitor(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-
+        // TODO: convert
         clear_discharge(TOTAL_IC, bms_ic);
         wakeup_sleep(TOTAL_IC);
         LTC6811_wrcfg(TOTAL_IC, bms_ic);
-
         for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
         {
             battery.pack[current_ic].discharge = 0;
@@ -664,71 +693,63 @@ namespace web
             LTC681x_set_cfgr_gpio(current_ic, bms_ic, gpio);
         }
 
-        runState = MONITOR;
+        set_mode(modes::Mode::MONITORING);
 
-        xSemaphoreGive(xMutex);
+        digitalWrite(pins::ESP::CONTACTOR, HIGH);
 
-        digitalWrite(CONTACTOR_GPIO, HIGH);
-        server.send(200, "text/plain", printState(runState));
+        return send_text(req, "200 OK", "text/plain", printState(modes::Mode::MONITORING));
     }
 
-    void handleBalancing()
+    esp_err_t handleBalancing(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-        runState = BALANCING;
-        xSemaphoreGive(xMutex);
+        if (!set_mode(modes::Mode::BALANCING))
+        {
+            return send_text(req, "503 Service Unavailable", "text/plain", "queue unavailable");
+        }
 
-        digitalWrite(SS_SWITCH_GPIO, HIGH);
-        server.send(200, "text/plain", printState(runState));
+        digitalWrite(pins::ESP::SS_SWITCH, HIGH);
+
+        return send_text(req, "200 OK", "text/plain", printState(modes::Mode::BALANCING));
     }
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleState()
+    esp_err_t handleState(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        float fileTotalKB = (float)SPIFFS.totalBytes() / 1024.0;
-        float fileUsedKB = (float)SPIFFS.usedBytes() / 1024.0;
+        battery_state_cache::Snapshot snapshot = {};
+        battery_state_cache::read(snapshot);
 
-        // float flashChipSize = (float)ESP.getFlashChipSize() / 1024.0 / 1024.0;
-        // float realFlashChipSize = (float)ESP.getFlashChipRealSize() / 1024.0 / 1024.0;
-        // float flashFreq = (float)ESP.getFlashChipSpeed() / 1000.0 / 1000.0;
+        size_t total = 0;
+        size_t used = 0;
+        esp_littlefs_info(nullptr, &total, &used);
 
-        xSemaphoreTake(xMutex, portMAX_DELAY);
+        char response[96] = {};
+        std::snprintf(
+            response,
+            sizeof(response),
+            "%s<br>%.2f/%.2f KB",
+            printState(snapshot.mode),
+            static_cast<float>(used) / 1024.0f,
+            static_cast<float>(total) / 1024.0f);
 
-        int index = 0;
-        char response[300];
-        index = snprintf(response, 300, "%s<br>%.2f/%.2f KB", printState(runState), fileUsedKB, fileTotalKB);
-
-        // for (int i = 0; i < TOTAL_IC; i++) {
-        //     index += snprintf(
-        //         response + index,
-        //         300 - index,
-        //         "<br>RAWbypass: %.2f Bypasss: %.2f",
-        //         (float)bms_ic[i].aux.a_codes[THERM_FET_GPIO-1] * 0.0001,
-        //         battery.pack[i].thermFETTemp
-        //     );
-        // }
-
-        xSemaphoreGive(xMutex);
-
-        server.send(200, "text/plain", response);
+        return send_text(req, "200 OK", "text/plain", response);
     }
 
-    const char *printState(RunState state)
+    const char *printState(modes::Mode state)
     {
         switch (state)
         {
-        case IDLE:
+        case modes::Mode::IDLE:
             return "idle";
-        case MONITOR:
+        case modes::Mode::MONITORING:
             return "monitor";
-        case BALANCING:
+        case modes::Mode::BALANCING:
             return "balancing";
         default:
             return "STATE ERROR";
@@ -767,202 +788,65 @@ namespace web
     }
     // -------------------------------------------------------------------------- //
 
-    // -------------------------------------------------------------------------- //
-    void saveData()
+    void writeToFile(FILE *file)
     {
-        // Make sure we create the file
-        File cellLog = SPIFFS.open(LOG_FILE, FILE_READ);
-        if (!cellLog)
+        if (file == nullptr)
         {
-            cellLog = SPIFFS.open(LOG_FILE, FILE_WRITE);
-            cellLog.close();
-        }
-
-        bool logNow = true;
-        float used_percent = (float)SPIFFS.usedBytes() / (float)SPIFFS.totalBytes();
-        if (used_percent > LOG_CAPCITY_PERCENT)
-        {
-            Serial.println("SPIFFS is full!");
-
-            xSemaphoreTake(xMutex, portMAX_DELAY);
-            bool deleteLog = parameters.deleteLog;
-            xSemaphoreGive(xMutex);
-
-            if (deleteLog)
-            {
-                SPIFFS.remove(LOG_FILE);
-                Serial.println("Log Deleted");
-            }
-            else
-            {
-                logNow = false;
-            }
-        }
-
-        if (logNow)
-        {
-            File cellLog = SPIFFS.open(LOG_FILE, FILE_APPEND); // APPEND = add
-
-            for (int i = 0; i < battery.logFaults.count; i++)
-            {
-                cellLog.print(battery.logFaults.lines[i]);
-            }
-            battery.logFaults.count = 0;
-
-            writeToFile(cellLog);
-            cellLog.close();
-            Serial.println("Data Logged");
-        }
-    }
-
-    String generateLogLine()
-    {
-        String output = String(millis()) + ",";
-
-        for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++)
-        {
-            for (int i = 0; i < bms_ic[0].ic_reg.cell_channels; i++)
-            {
-                output += String(battery.pack[current_ic].cells[i]) + ",";
-            }
-        }
-
-        output += String(battery.temps.therm1) + ",";
-        output += String(battery.temps.therm2) + ",";
-        output += String(battery.temps.therm3) + ",";
-        output += String(battery.temps.therm4) + ",";
-        output += String(battery.temps.thermFET) + ",";
-        output += String(battery.temps.thermBalBot) + ",";
-        output += String(battery.temps.thermBalTop) + ",";
-
-        output += String(battery.current) + ",";
-
-        output += battery.faults.batteryMinVoltage ? "1" : "0";
-        output += battery.faults.batteryMaxVoltage ? "1" : "0";
-        output += battery.faults.batteryAverageVoltage ? "1" : "0";
-        output += battery.faults.batteryVoltageDiff ? "1" : "0";
-        output += battery.faults.batteryTherm1Temp ? "1" : "0";
-        output += battery.faults.batteryTherm2Temp ? "1" : "0";
-        output += battery.faults.batteryTherm3Temp ? "1" : "0";
-        output += battery.faults.batteryTherm4Temp ? "1" : "0";
-        output += battery.faults.batteryCurrent ? "1" : "0";
-        output += battery.faults.overPower ? "1" : "0";
-        output += battery.faults.coreZeroWatch ? "1" : "0";
-
-        output += "\n";
-
-        return output;
-    }
-
-    void writeToFile(File &file)
-    {
-        xSemaphoreTake(xMutex, portMAX_DELAY);
-
-        String output = generateLogLine();
-
-        xSemaphoreGive(xMutex);
-
-        file.print(output);
-    }
-    // -------------------------------------------------------------------------- //
-
-    // -------------------------------------------------------------------------- //
-    void sendDefaultHTML()
-    {
-        server.setContentLength(strlen_P(INDEX_HTML));
-        server.send(200, "text/html", ""); // Start response
-
-        // Send content in chunks, too big to send as one constant string
-        const char *ptr = INDEX_HTML;
-        char buffer[512];
-        size_t len = strlen_P(INDEX_HTML);
-
-        while (len > 0)
-        {
-            size_t chunkSize = (len < sizeof(buffer)) ? len : sizeof(buffer);
-            memcpy_P(buffer, ptr, chunkSize);
-            server.sendContent(buffer, chunkSize);
-            ptr += chunkSize;
-            len -= chunkSize;
-        }
-    }
-
-    void handleDefault()
-    {
-        if (checkCorsPreflight())
             return;
+        }
 
-        sendDefaultHTML();
+        std::string output = generateLogLine();
+        std::fwrite(output.data(), 1, output.size(), file);
+    }
+    // -------------------------------------------------------------------------- //
+
+    // -------------------------------------------------------------------------- //
+    esp_err_t sendDefaultHTML(httpd_req_t *req)
+    {
+        ESP_RETURN_ON_ERROR(add_cors_headers(req), TAG, "cors failed");
+        ESP_RETURN_ON_ERROR(httpd_resp_set_type(req, "text/html"), TAG, "type failed");
+
+        size_t html_len = std::strlen(INDEX_HTML);
+        size_t offset = 0;
+        constexpr size_t CHUNK = 512;
+
+        while (offset < html_len)
+        {
+            size_t send_len = std::min(CHUNK, html_len - offset);
+            ESP_RETURN_ON_ERROR(httpd_resp_send_chunk(req, INDEX_HTML + offset, send_len), TAG, "chunk send failed");
+            offset += send_len;
+        }
+
+        return httpd_resp_send_chunk(req, nullptr, 0);
     }
 
-    void handleRoot()
+    esp_err_t handleDefault(httpd_req_t *req)
     {
-        if (checkCorsPreflight())
-            return;
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
-        // If there is a SPIFFS version, use that. Otherwise, use the default embedded HTML.
-        if (SPIFFS.exists(HTML_FILE))
+        return sendDefaultHTML(req);
+    }
+
+    esp_err_t handleRoot(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+            return ESP_OK;
+
+        // If there is a file version, use that. Otherwise, use the default embedded HTML.
+        if (stream_file(req, HTML_FILE, "text/html"))
         {
-            File html_file = SPIFFS.open(HTML_FILE, "r");
-            server.streamFile(html_file, "text/html");
-            html_file.close();
+            return ESP_OK;
         }
         else
         {
-            sendDefaultHTML();
+            return sendDefaultHTML(req);
         }
     }
 
     FILE fFrontend; // Global variable to handle the file upload
 
-    void handleFrontend(httpd_req_t *req)
-    {
-        if (checkCorsPreflight(req))
-        {
-            return;
-        }
-
-        std::vector<uint8_t> body;
-        esp_err_t read_status = read_request_body(req, body);
-        if (read_status == ESP_ERR_INVALID_SIZE)
-        {
-            send_text(req, "413 Payload Too Large", "text/plain", "error");
-            return;
-        }
-        if (read_status != ESP_OK)
-        {
-            send_text(req, "400 Bad Request", "text/plain", "error");
-            return;
-        }
-
-        std::string filename;
-        const uint8_t *file_data = nullptr;
-        size_t file_size = 0;
-
-        std::string content_type = content_type_header(req);
-        if (!parse_multipart_file(body, content_type, "data", filename, file_data, file_size))
-        {
-            send_text(req, "400 Bad Request", "text/plain", "error");
-            return;
-        }
-
-        std::FILE *file = std::fopen(HTML_FILE, "wb");
-        if (file == nullptr)
-        {
-            send_text(req, "500 Internal Server Error", "text/plain", "error");
-            return;
-        }
-
-        size_t written = std::fwrite(file_data, 1, file_size, file);
-        std::fclose(file);
-
-        send_text(req, "200 OK", "text/plain", written == file_size ? "ok" : "error");
-        return;
-    }
-    // -------------------------------------------------------------------------- //
-
-    // -------------------------------------------------------------------------- //
-    void handleFileUpload(httpd_req_t *req)
+    esp_err_t handleFrontend(httpd_req_t *req)
     {
         if (checkCorsPreflight(req))
         {
@@ -973,13 +857,11 @@ namespace web
         esp_err_t read_status = read_request_body(req, body);
         if (read_status == ESP_ERR_INVALID_SIZE)
         {
-            send_text(req, "413 Payload Too Large", "text/plain", "error");
-            return;
+            return send_text(req, "413 Payload Too Large", "text/plain", "error");
         }
         if (read_status != ESP_OK)
         {
-            send_text(req, "400 Bad Request", "text/plain", "error");
-            return;
+            return send_text(req, "400 Bad Request", "text/plain", "error");
         }
 
         std::string filename;
@@ -989,8 +871,49 @@ namespace web
         std::string content_type = content_type_header(req);
         if (!parse_multipart_file(body, content_type, "data", filename, file_data, file_size))
         {
-            send_text(req, "400 Bad Request", "text/plain", "error");
-            return;
+            return send_text(req, "400 Bad Request", "text/plain", "error");
+        }
+
+        std::FILE *file = std::fopen(HTML_FILE, "wb");
+        if (file == nullptr)
+        {
+            return send_text(req, "500 Internal Server Error", "text/plain", "error");
+        }
+
+        size_t written = std::fwrite(file_data, 1, file_size, file);
+        std::fclose(file);
+
+        return send_text(req, "200 OK", "text/plain", written == file_size ? "ok" : "error");
+    }
+    // -------------------------------------------------------------------------- //
+
+    // -------------------------------------------------------------------------- //
+    esp_err_t handleFileUpload(httpd_req_t *req)
+    {
+        if (checkCorsPreflight(req))
+        {
+            return ESP_OK;
+        }
+
+        std::vector<uint8_t> body;
+        esp_err_t read_status = read_request_body(req, body);
+        if (read_status == ESP_ERR_INVALID_SIZE)
+        {
+            return send_text(req, "413 Payload Too Large", "text/plain", "error");
+        }
+        if (read_status != ESP_OK)
+        {
+            return send_text(req, "400 Bad Request", "text/plain", "error");
+        }
+
+        std::string filename;
+        const uint8_t *file_data = nullptr;
+        size_t file_size = 0;
+
+        std::string content_type = content_type_header(req);
+        if (!parse_multipart_file(body, content_type, "data", filename, file_data, file_size))
+        {
+            return send_text(req, "400 Bad Request", "text/plain", "error");
         }
 
         if (filename.empty())
@@ -1014,15 +937,13 @@ namespace web
         std::FILE *file = std::fopen(out_path.c_str(), "wb");
         if (file == nullptr)
         {
-            send_text(req, "500 Internal Server Error", "text/plain", "error");
-            return;
+            return send_text(req, "500 Internal Server Error", "text/plain", "error");
         }
 
         size_t written = std::fwrite(file_data, 1, file_size, file);
         std::fclose(file);
 
-        send_text(req, "200 OK", "text/plain", written == file_size ? "ok" : "error");
-        return;
+        return send_text(req, "200 OK", "text/plain", written == file_size ? "ok" : "error");
     }
 
     bool handleFileRead(httpd_req_t *req, const std::string &path)
@@ -1047,15 +968,19 @@ namespace web
     // -------------------------------------------------------------------------- //
 
     // -------------------------------------------------------------------------- //
-    void handleNotFound(httpd_req_t *req, httpd_err_code_t err)
+    esp_err_t handleNotFound(httpd_req_t *req, httpd_err_code_t err)
     {
-        if (checkCorsPreflight())
-            return;
+        (void)err;
+
+        if (checkCorsPreflight(req))
+            return ESP_OK;
 
         if (!handleFileRead(req, req->uri))
         { // check if the file exists in the flash memory (SPIFFS), if so, send it
-            send_text(req, "404 Not Found", "text/plain", "404: File Not Found");
+            return send_text(req, "404 Not Found", "text/plain", "404: File Not Found");
         }
+
+        return ESP_OK;
     }
     // -------------------------------------------------------------------------- //
 
@@ -1512,6 +1437,34 @@ namespace web
         }
 
         return ESP_OK;
+    }
+
+    std::string format_float(float value, int precision)
+    {
+        char buffer[32] = {};
+        std::snprintf(buffer, sizeof(buffer), "%.*f", precision, value);
+        return std::string(buffer);
+    }
+
+    float pack_voltage_sum(const battery::IcData &ic)
+    {
+        float sum = 0.0f;
+        for (size_t i = 0; i < battery::CELL_COUNT_PER_IC; i++)
+        {
+            sum += battery::TO_VOLTAGE(ic.cell_voltages[i]);
+        }
+        return sum;
+    }
+
+    bool is_fault_set(uint32_t bits, size_t index)
+    {
+        return (bits & (static_cast<uint32_t>(1) << index)) != 0U;
+    }
+
+    bool clear_fault_by_index(size_t fault_index)
+    {
+        q_battery::Message msg = faults::msg::ClearFault{.fault_index = fault_index};
+        return queue_battery_message(msg);
     }
 }
 #endif

@@ -1,3 +1,4 @@
+#if false // disable entire file for now, as it's not being used and is incomplete
 #ifndef WEB_HPP
 #define WEB_HPP
 
@@ -63,3 +64,4 @@ namespace web
 } // namespace web
 
 #endif // WEB_HPP
+#endif
