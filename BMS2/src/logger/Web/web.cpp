@@ -1419,6 +1419,159 @@ namespace web
         return ESP_OK;
     }
 
+    bool stream_file(httpd_req_t *req, const char *path, const char *content_type)
+    {
+        std::FILE *file = std::fopen(path, "rb");
+        if (file == nullptr)
+        {
+            return false;
+        }
+
+        if (add_cors_headers(req) != ESP_OK)
+        {
+            std::fclose(file);
+            return false;
+        }
+
+        if (httpd_resp_set_type(req, content_type) != ESP_OK)
+        {
+            std::fclose(file);
+            return false;
+        }
+
+        std::array<char, 1024> buffer = {};
+        while (true)
+        {
+            size_t bytes = std::fread(buffer.data(), 1, buffer.size(), file);
+            if (bytes > 0)
+            {
+                if (httpd_resp_send_chunk(req, buffer.data(), bytes) != ESP_OK)
+                {
+                    std::fclose(file);
+                    return false;
+                }
+            }
+
+            if (bytes < buffer.size())
+            {
+                if (std::ferror(file) != 0)
+                {
+                    std::fclose(file);
+                    return false;
+                }
+                break;
+            }
+        }
+
+        std::fclose(file);
+        return httpd_resp_send_chunk(req, nullptr, 0) == ESP_OK;
+    }
+
+    bool parse_multipart_file(const std::vector<uint8_t> &body,
+                              const std::string &content_type,
+                              const std::string &field_name,
+                              std::string &filename,
+                              const uint8_t *&file_start,
+                              size_t &file_size)
+    {
+        filename.clear();
+        file_start = nullptr;
+        file_size = 0;
+
+        size_t boundary_pos = content_type.find("boundary=");
+        if (boundary_pos == std::string::npos)
+        {
+            return false;
+        }
+
+        std::string boundary = content_type.substr(boundary_pos + 9);
+        size_t semi = boundary.find(';');
+        if (semi != std::string::npos)
+        {
+            boundary.resize(semi);
+        }
+
+        if (boundary.size() >= 2 && boundary.front() == '"' && boundary.back() == '"')
+        {
+            boundary = boundary.substr(1, boundary.size() - 2);
+        }
+
+        if (boundary.empty())
+        {
+            return false;
+        }
+
+        std::string payload(reinterpret_cast<const char *>(body.data()), body.size());
+        const std::string delimiter = "--" + boundary;
+
+        size_t cursor = payload.find(delimiter);
+        while (cursor != std::string::npos)
+        {
+            cursor += delimiter.size();
+
+            if (cursor + 1 < payload.size() && payload[cursor] == '-' && payload[cursor + 1] == '-')
+            {
+                break;
+            }
+
+            if (cursor + 1 < payload.size() && payload[cursor] == '\r' && payload[cursor + 1] == '\n')
+            {
+                cursor += 2;
+            }
+
+            size_t header_end = payload.find("\r\n\r\n", cursor);
+            if (header_end == std::string::npos)
+            {
+                return false;
+            }
+
+            std::string headers = payload.substr(cursor, header_end - cursor);
+
+            auto get_quoted_value = [&](const std::string &key) -> std::string {
+                std::string token = key + "=\"";
+                size_t key_pos = headers.find(token);
+                if (key_pos == std::string::npos)
+                {
+                    return "";
+                }
+
+                size_t value_start = key_pos + token.size();
+                size_t value_end = headers.find('"', value_start);
+                if (value_end == std::string::npos)
+                {
+                    return "";
+                }
+
+                return headers.substr(value_start, value_end - value_start);
+            };
+
+            std::string current_name = get_quoted_value("name");
+
+            size_t data_start = header_end + 4;
+            size_t next_delim = payload.find("\r\n" + delimiter, data_start);
+            if (next_delim == std::string::npos)
+            {
+                next_delim = payload.find(delimiter, data_start);
+            }
+            if (next_delim == std::string::npos)
+            {
+                return false;
+            }
+
+            if (current_name == field_name)
+            {
+                filename = get_quoted_value("filename");
+                file_start = body.data() + data_start;
+                file_size = next_delim - data_start;
+                return true;
+            }
+
+            cursor = payload.find(delimiter, next_delim);
+        }
+
+        return false;
+    }
+
     std::string format_float(float value, int precision)
     {
         char buffer[32] = {};

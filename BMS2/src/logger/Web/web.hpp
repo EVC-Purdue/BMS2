@@ -46,7 +46,7 @@ namespace web
     esp_err_t handleState(httpd_req_t *req);
     const char *printState(modes::Mode state);
 
-    bool handleFileRead(char *path);
+    bool handleFileRead(httpd_req_t *req, const std::string &path);
     const char *getContentType(const std::string &filename);
 
     void saveData();
