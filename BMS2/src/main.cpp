@@ -8,6 +8,7 @@
 #include "battery/q_battery.hpp"
 #include "logger/t_logger.hpp"
 #include "logger/q_logger.hpp"
+#include "logger/Web/web.hpp"
 #include "util/err.hpp"
 #include <unistd.h>
 #include "hardware/pins.hpp"
@@ -43,6 +44,9 @@ extern "C" void app_main()
 
     q_logger::g_logger_queue = xQueueCreate(q_logger::QUEUE_SIZE, sizeof(q_logger::Message));
     UTIL_CHECK_REQUIRE(q_logger::g_logger_queue != nullptr);
+
+    // Wifi name/pass in hardware/parameters.hpp
+    ESP_ERROR_CHECK(web::setupServer());
 
     // Start tasks
     TaskHandle_t battery_task_handle = xTaskCreateStaticPinnedToCore(

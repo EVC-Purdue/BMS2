@@ -4,42 +4,49 @@
 #include <cstdint>
 
 #include "driver/spi_master.h"
+#include "esp_err.h"
+#include "battery/parameters.hpp"
 
+namespace hardware
+{
 
-namespace hardware {
+    constexpr int MAX_SPI_TRANSFER_SZ = 4096;
+    constexpr uint8_t SPI_MODE = 0;
+    constexpr int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
 
-constexpr int MAX_SPI_TRANSFER_SZ = 4096;
-constexpr uint8_t SPI_MODE = 0;
-constexpr int SPI_CLOCK_SPEED_HZ = 500'000; // 500 kHz
+    constexpr uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
 
-constexpr uint32_t LEDC_DUTY = 512; // 50% volume for 10-bit resolution
+    constexpr const char *FILESYSTEM_BASE_PATH = "/littlefs";
+    constexpr uint32_t SPIFFS_MAX_FILES = 5;
+    constexpr bool SPIFFS_FORMAT_IF_MOUNT_FAILED = true;
 
-constexpr const char* FILESYSTEM_BASE_PATH = "/littlefs";
-constexpr uint32_t SPIFFS_MAX_FILES = 5;
-constexpr bool SPIFFS_FORMAT_IF_MOUNT_FAILED = true;
+    constexpr uint8_t WIFI_AP_CHANNEL = 1;
+    constexpr uint8_t WIFI_AP_MAX_CONNECTIONS = 2;
 
+    // Sets up GPIO pins as outputs
+    void configure_gpio_output();
 
-// Sets up GPIO pins as outputs
-void configure_gpio_output();
+    // Configure SPI peripheral
+    void configure_spi(spi_device_handle_t *spi_handle);
 
-// Configure SPI peripheral
-void configure_spi(spi_device_handle_t* spi_handle);
+    // Configure LEDC (buzzer) peripheral
+    // void configure_ledc();
 
-// Configure LEDC (buzzer) peripheral
-// void configure_ledc();
+    // Configure SPIFFs
+    // void configure_spiffs();
 
-// Configure SPIFFs
-// void configure_spiffs();
+    // Calls all other configure functions (GPIO, SPI, LEDC, SPIFFS)
+    void configure(spi_device_handle_t *spi_handle);
 
-// Calls all other configure functions (GPIO, SPI, LEDC, SPIFFS)
-void configure(spi_device_handle_t* spi_handle);
+    // Starts a local hotspot for web access.
+    esp_err_t start_wifi_hotspot();
 
-// Set the initial states of output pins
-void setup_initial_gpio_states();
+    // Set the initial states of output pins
+    void setup_initial_gpio_states();
 
-// Play a tone on the buzzer at the specified frequency (Hz) for the specified
-// duration (ms) (blocking)
-// void play_buzzer_tone(uint32_t frequency_hz, uint32_t duration_ms);
+    // Play a tone on the buzzer at the specified frequency (Hz) for the specified
+    // duration (ms) (blocking)
+    // void play_buzzer_tone(uint32_t frequency_hz, uint32_t duration_ms);
 } // namespace hardware
 
 #endif // HARDWARE_HPP

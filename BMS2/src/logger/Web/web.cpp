@@ -1,6 +1,6 @@
 #if true // disable entire file for now, as it's not being used and is incomplete
 
-#include "logger/Web/web_copy.hpp"
+#include "logger/Web/web.hpp"
 #include "stdint.h"
 #include "battery/battery.hpp"
 #include "battery/parameters.hpp"
@@ -28,6 +28,7 @@
 #include "hardware/CAN.hpp"
 #include "hardware/gpio.hpp"
 #include "hardware/pins.hpp"
+#include "logger/t_logger.hpp"
 #include "logger/q_logger.hpp"
 #include "hardware/hardware.hpp"
 
@@ -38,7 +39,6 @@ namespace web
     static const char *TAG = "web_idf";
     constexpr const char *LOG_FILE = "/littlefs/log.csv";
     constexpr const char *HTML_FILE = "/littlefs/index.html";
-    constexpr const char *BMS_NAME = "bms";
     constexpr size_t MAX_UPLOAD_SIZE = 512U * 1024U;
 
     bool parse_bool(const std::string &value, bool &out)
@@ -103,6 +103,7 @@ namespace web
 
         httpd_config_t config = HTTPD_DEFAULT_CONFIG();
         config.uri_match_fn = httpd_uri_match_wildcard;
+        config.core_id = t_logger::TASK_CORE_ID;
 
         ESP_RETURN_ON_ERROR(httpd_start(&s_server, &config), TAG, "httpd start failed");
 
@@ -370,7 +371,7 @@ namespace web
     {
         if (checkCorsPreflight(req))
             return ESP_OK;
-        return send_text(req, "200 OK", "text/plain", BMS_NAME);
+        return send_text(req, "200 OK", "text/plain", params::PARAMETER_WIFI_AP_SSID);
     }
     // -------------------------------------------------------------------------- //
 
@@ -382,7 +383,7 @@ namespace web
 
         std::string output;
         output += "apSSID: ";
-        output += BMS_NAME;
+        output += params::PARAMETER_WIFI_AP_SSID;
         output += "\n";
         for (size_t current_ic = 0; current_ic < battery::IC_COUNT; current_ic++)
         {
@@ -641,7 +642,7 @@ namespace web
         json += "},";
 
         json += "\"name\":\"";
-        json += BMS_NAME;
+        json += params::PARAMETER_WIFI_AP_SSID;
         json += "\"";
         json += "}";
 

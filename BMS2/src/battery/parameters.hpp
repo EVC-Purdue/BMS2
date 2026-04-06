@@ -30,6 +30,9 @@ namespace params
     constexpr float PARAMETER_I_CAN_CHARGE = 10.0f;  // Current to charge at. Sent over CAN
     constexpr float PARAMETER_P_MAX = 14000.0f;      // 14kW max power
 
+    constexpr const char *PARAMETER_WIFI_AP_SSID = "BMS2";
+    constexpr const char *PARAMETER_WIFI_AP_PASSWORD = "landlordking";
+
     constexpr size_t KEY_CHAR_COUNT = 16; // Number of chars that could be used for the key string
 
     namespace msg

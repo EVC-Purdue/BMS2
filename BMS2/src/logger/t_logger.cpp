@@ -9,7 +9,6 @@
 #include "util/overloaded.hpp"
 #include "util/err.hpp"
 #include "logger/t_logger.hpp"
-#include "logger/Web/web.hpp"
 
 namespace t_logger
 {
@@ -175,7 +174,7 @@ namespace t_logger
                                                      written);
                                                  this->write_buffer_index += written;
 
-                                                  // printf("Debug: Logged data: %s\n", this->log_line_buffer); // Debug print
+                                                 // printf("Debug: Logged data: %s\n", this->log_line_buffer); // Debug print
                                              },
                                              [this](const q_logger::msg::ReadStart &_m)
                                              {
