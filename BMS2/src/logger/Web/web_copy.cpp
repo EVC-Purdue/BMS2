@@ -658,6 +658,7 @@ namespace web
         q_battery::Message msg = q_battery::msg::RunCommand{.command_id = 14};
         queue_battery_message(msg); // Clear discharge transistors
 
+        // CHECK: why clear gpios? What was setting discharge for?
         q_battery::Message msg2 = q_battery::msg::RunCommand{.command_id = 21};
         queue_battery_message(msg2); // Clear gpios and discharges
 
@@ -1288,15 +1289,6 @@ namespace web
         ESP_RETURN_ON_ERROR(httpd_resp_set_status(req, status), TAG, "status failed");
         ESP_RETURN_ON_ERROR(httpd_resp_set_type(req, type), TAG, "type failed");
         return httpd_resp_sendstr(req, body);
-    }
-
-    esp_err_t require_method(httpd_req_t *req, httpd_method_t method)
-    {
-        if (req->method != method)
-        {
-            return send_text(req, "405 Method Not Allowed", "text/plain", "");
-        }
-        return ESP_OK;
     }
 
     bool starts_with(const std::string &value, const std::string &prefix)

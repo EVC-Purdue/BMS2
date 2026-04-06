@@ -498,6 +498,7 @@ namespace t_battery
 		case 3:
 			gs0 = HIGH;
 			gs1 = HIGH;
+			break;
 		default:
 			gs0 = HIGH;
 			gs1 = HIGH;
